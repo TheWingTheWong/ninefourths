@@ -256,25 +256,33 @@ pub fn log2_w_eq8(c: u64, d: u64) -> f64 {
 /// Sequence L_0 = 1, L_{j+1} = L_j + ⌈(3L_j − 1)/(n − 1)⌉ (proof of Theorem 4.3).
 /// Returns log2(2 L_k − 1).
 pub fn log2_two_lk_minus_one(n: u64, k: u64) -> f64 {
-    let mut l: u128 = 1;
-    let mut j = 0;
-    while j < k {
-        if l > (1u128 << 100) {
-            break;
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+    thread_local! {
+        // per n: exact log2(2 L_k − 1) for k = 0.. until L_k > 2^100, plus log2 L at that point
+        static CACHE: RefCell<HashMap<u64, (Vec<f64>, f64)>> = RefCell::new(HashMap::new());
+    }
+    CACHE.with(|c| {
+        let mut c = c.borrow_mut();
+        let (tab, log_l_end) = c.entry(n).or_insert_with(|| {
+            let mut l: u128 = 1;
+            let mut tab = vec![1f64.log2()];
+            while l <= (1u128 << 100) {
+                l += (3 * l - 1).div_ceil((n - 1) as u128);
+                tab.push(((2 * l - 1) as f64).log2());
+            }
+            (tab, (l as f64).log2())
+        });
+        let k = k as usize;
+        if k < tab.len() {
+            return tab[k];
         }
-        l += (3 * l - 1).div_ceil((n - 1) as u128);
-        j += 1;
-    }
-    if j == k {
-        return ((2 * l - 1) as f64).log2();
-    }
-    // For large L, L' = L + ceil((3L-1)/(n-1)) <= rho L + 1 with rho = 1 + 3/(n-1);
-    // the +1 is negligible at L > 2^100 (relative 2^-100 per step), but we keep it
-    // as an upper bound: L' <= rho L (1 + 2^-99).
-    let rho = 1.0 + 3.0 / (n - 1) as f64;
-    let step = rho.log2() + 1e-29;
-    let log_l = (l as f64).log2() + (k - j) as f64 * step;
-    log_l + 1.0
+        // For L > 2^100, L' = L + ⌈(3L−1)/(n−1)⌉ ≤ ρL + 1 ≤ ρL(1 + 2^-99), ρ = 1 + 3/(n−1):
+        // an upper bound in log space.
+        let rho = 1.0 + 3.0 / (n - 1) as f64;
+        let step = rho.log2() + 1e-29;
+        *log_l_end + (k - (tab.len() - 1)) as f64 * step + 1.0
+    })
 }
 
 /// Mod-ε part of the cost (everything except Bini's h), for k rounds.
@@ -569,7 +577,7 @@ pub fn search_c(tau: f64, c: u64, d_max: u64, bound: Option<f64>) -> Option<Best
                     }
                 }
             };
-            let samples = 4000u64;
+            let samples = 1500u64;
             let mut prev = 0;
             let mut ks = vec![];
             for i in 0..=samples {
