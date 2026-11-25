@@ -2,14 +2,14 @@
 
 On November 24, 2026 OpenAI posted a preprint claiming that the matrix multiplication exponent ω is exactly 9/4. The upper bound comes from October, and the new lower bound has not yet been checked outside OpenAI. Rafael Pass then published an explicit, constructive algorithm for the upper bound ([arXiv 2610.28627](https://arxiv.org/abs/2610.28627)). This repo builds that algorithm, runs it, and works out what it costs.
 
-**The best exact identity found here whose exponent is below Strassen's 2.807 multiplies matrices whose side has 1,078,626 digits (V ≈ 10^1,078,625.5). At that size it uses 10^3,028,063 multiplications, 22 orders of magnitude fewer than Strassen's 10^3,028,085, but nothing smaller can be fed to it without padding.** That is the best point of a grid search over the free parameters of Pass's lemmas (c ≤ 60, d ≤ 2500, k up to 64× its first feasible value). The minimal c and d that the proof admits give an identity of side 10^(1.6×10^11). Almost all of the size comes from removing the formal parameter ε at the end (Bini's conversion). Before that step, the identity already has exponent 2.71 at side 10^17,977, but its ε-degree is 10^103,314, so Bini's conversion needs 60 tensor powers.
+**The best exact identity found here whose exponent is below Strassen's 2.807 multiplies matrices whose side has 1,078,626 digits (V ≈ 10^1,078,625.5). At that size it uses 10^3,028,063 multiplications, an exponent of 2.807335 against Strassen's log2 7 = 2.807355. That is 22 orders of magnitude fewer than Strassen's 10^3,028,085, out of three million. Nothing smaller can be fed to it without padding.** That is the best point of a grid search over the free parameters of Pass's lemmas (c ≤ 60, d ≤ 2500, k up to 64× its first feasible value). The minimal c and d that the proof admits give an identity of side 10^(1.6×10^11). Almost all of the size comes from removing the formal parameter ε at the end (Bini's conversion). Before that step, the identity already has exponent 2.71 at side 10^17,977, but its ε-degree is 10^103,314, so Bini's conversion needs 60 tensor powers.
 
 Along the way the build turned up one fact the paper doesn't state: **the amplified packing of Lemma 3.2 is exact.** The ε cancels identically on the balanced targets the lemma keeps, so every ε in the final algorithm comes from the interpolation in Lemma 3.4. It only changes the final size by about 0.8%, because the ε that remains still compounds every round.
 
 ![verify output](assets/verify.svg)
 
 Every construction in the proof is built here as an explicit bilinear algorithm: the primal (c+2)-for-c gadget, role exchanges, tensoring, amplification, the same-left-to-general conversion, interpolation, the round, composition, and Bini's conversion. Each is checked exactly at random points of F_p, with ε carried symbolically. Two compositions are also run end to end:
-- Theorem 3.1 → Lemma 3.2 → Lemma 3.4 → Lemma 2.3 → Bini gives an exact packing of 17 polynomial products.
+- Theorem 3.1 → Lemma 3.2 → Lemma 3.4 → Lemma 2.3 → Bini gives an exact packing of 5 polynomial products (Lemma 3.4 is checked separately at full retention, 17 targets).
 - Round → composition → Lemma 2.3 gives a working matrix multiplication: two random 2×2 integer matrices take 373,248 multiplications, against 8 for schoolbook.
 
 Joining the two pipelines needs at least 10^9 coordinates even at the smallest real parameters (see below), so they are checked separately.
@@ -19,31 +19,31 @@ Joining the two pipelines needs at least 10^9 coordinates even at the smallest r
 Every row is produced by [`bench/run.sh`](bench/run.sh) (the `cost` binary) and stored in [`bench/cost_table.jsonl`](bench/cost_table.jsonl). CI recomputes the 2.807 rows and checks them against the file.
 - **Pass:** Pass's (c, d), meaning the smallest c whose limit exponent is below the target and the smallest d satisfying his condition (10). The paper leaves k and h as "sufficiently large", so they are chosen the way the search chooses them.
 - **Searched:** the best (c, d, k, h) on the grid. The grid is c ≤ 60 and d ≤ 2500 (d ≤ 8000 at 2.4), with k sampled from its first feasible value k0 up to 64·k0.
-- **Columns:** h is the number of tensor powers Bini's conversion needs. "Strassen at side V" is 7^⌈log2 V⌉.
+- **Columns:** h is the number of tensor powers Bini's conversion needs. "Exact exponent" is log_V R. Every identity sits just under its target, because the search minimizes R subject to that bound; the Pass row at 2.807 is below log2 7 by about 2×10^-10. "Strassen at side V" is 7^⌈log2 V⌉.
 
-| target exponent | parameters | c | d | k | h | mod-ε side v (exponent) | ε-degree | exact side V | multiplications R | Strassen at side V |
-|---|---|---|---|---|---|---|---|---|---|---|
-| log2 7 = 2.807 | Pass | 3 | 133 | 53,867 | 25,801 | 10^6,128,780 (2.807) | 10^(1.99×10^7) | **10^(1.58×10^11)** | 10^(4.44×10^11) | 10^(4.44×10^11) |
-| log2 7 = 2.807 | searched | 5 | 209 | 147 | 60 | 10^17,977 (2.712) | 10^103,314 | **10^1,078,625** | 10^3,028,063 | 10^3,028,085 |
-| 2.75 | Pass | 3 | 292 | 261,393 | 121,846 | 10^(6.64×10^7) (2.750) | 10^(2.12×10^8) | **10^(8.10×10^12)** | 10^(2.23×10^13) | 10^(2.27×10^13) |
-| 2.75 | searched | 6 | 265 | 194 | 76 | 10^25,704 (2.655) | 10^184,956 | **10^1,953,502** | 10^5,372,090 | 10^5,484,174 |
-| 2.7 | Pass | 3 | 2,411 | 7,324,047 | 3.34×10^6 | 10^(1.56×10^10) (2.700) | 10^(4.93×10^10) | **10^(5.21×10^16)** | 10^(1.41×10^17) | 10^(1.46×10^17) |
-| 2.7 | searched | 6 | 318 | 237 | 93 | 10^37,621 (2.622) | 10^271,289 | **10^3,498,796** | 10^9,446,684 | 10^9,822,362 |
-| 2.6 | Pass | 4 | 654 | 1,010,724 | 407,410 | 10^(4.60×10^8) (2.600) | 10^(2.05×10^9) | **10^(1.87×10^14)** | 10^(4.87×10^14) | 10^(5.26×10^14) |
-| 2.6 | searched | 7 | 545 | 428 | 152 | 10^101,568 (2.542) | 10^888,412 | **10^(1.54×10^7)** | 10^(4.01×10^7) | 10^(4.33×10^7) |
-| 2.5 | Pass | 5 | 6,879 | 123,477,188 | 4.51×10^7 | 10^(4.96×10^11) (2.500) | 10^(2.87×10^12) | **10^(2.24×10^19)** | 10^(5.59×10^19) | 10^(6.28×10^19) |
-| 2.5 | searched | 10 | 1,084 | 934 | 324 | 10^319,673 (2.458) | 10^4,365,716 | **10^(1.04×10^8)** | 10^(2.59×10^8) | 10^(2.91×10^8) |
-| 2.45 | Pass | 7 | 1,307 | 10,776,252 | 3.78×10^6 | 10^(6.08×10^9) (2.450) | 10^(5.37×10^10) | **10^(2.30×10^16)** | 10^(5.63×10^16) | 10^(6.45×10^16) |
-| 2.45 | searched | 13 | 1,743 | 1,617 | 536 | 10^698,348 (2.415) | 10^(1.32×10^7) | **10^(3.74×10^8)** | 10^(9.17×10^8) | 10^(1.05×10^9) |
-| 2.4 | Pass | 8 | 24,771 | 2,341,145,379 | 7.88×10^8 | 10^(2.25×10^13) (2.400) | 10^(2.32×10^14) | **10^(1.77×10^22)** | 10^(4.25×10^22) | 10^(4.97×10^22) |
-| 2.4 | searched | 16 | 3,207 | 3,043 | 984 | 10^1,991,526 (2.375) | 10^(4.90×10^7) | **10^(1.96×10^9)** | 10^(4.70×10^9) | 10^(5.50×10^9) |
+| target exponent | parameters | c | d | k | h | mod-ε side v (exponent) | ε-degree | exact side V | multiplications R | exact exponent | Strassen at side V |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| log2 7 = 2.807 | Pass | 3 | 133 | 53,867 | 25,801 | 10^6,128,780 (2.807) | 10^(1.99×10^7) | **10^(1.58×10^11)** | 10^(4.44×10^11) | 2.807355 | 10^(4.44×10^11) |
+| log2 7 = 2.807 | searched | 5 | 209 | 147 | 60 | 10^17,977 (2.712) | 10^103,314 | **10^1,078,625** | 10^3,028,063 | 2.807335 | 10^3,028,085 |
+| 2.75 | Pass | 3 | 292 | 261,393 | 121,846 | 10^(6.64×10^7) (2.750) | 10^(2.12×10^8) | **10^(8.10×10^12)** | 10^(2.23×10^13) | 2.750000 | 10^(2.27×10^13) |
+| 2.75 | searched | 6 | 265 | 194 | 76 | 10^25,704 (2.655) | 10^184,956 | **10^1,953,502** | 10^5,372,090 | 2.749979 | 10^5,484,174 |
+| 2.7 | Pass | 3 | 2,411 | 7,324,047 | 3.34×10^6 | 10^(1.56×10^10) (2.700) | 10^(4.93×10^10) | **10^(5.21×10^16)** | 10^(1.41×10^17) | 2.700000 | 10^(1.46×10^17) |
+| 2.7 | searched | 6 | 318 | 237 | 93 | 10^37,621 (2.622) | 10^271,289 | **10^3,498,796** | 10^9,446,684 | 2.699982 | 10^9,822,362 |
+| 2.6 | Pass | 4 | 654 | 1,010,724 | 407,410 | 10^(4.60×10^8) (2.600) | 10^(2.05×10^9) | **10^(1.87×10^14)** | 10^(4.87×10^14) | 2.600000 | 10^(5.26×10^14) |
+| 2.6 | searched | 7 | 545 | 428 | 152 | 10^101,568 (2.542) | 10^888,412 | **10^(1.54×10^7)** | 10^(4.01×10^7) | 2.599996 | 10^(4.33×10^7) |
+| 2.5 | Pass | 5 | 6,879 | 123,477,188 | 4.51×10^7 | 10^(4.96×10^11) (2.500) | 10^(2.87×10^12) | **10^(2.24×10^19)** | 10^(5.59×10^19) | 2.500000 | 10^(6.28×10^19) |
+| 2.5 | searched | 10 | 1,084 | 934 | 324 | 10^319,673 (2.458) | 10^4,365,716 | **10^(1.04×10^8)** | 10^(2.59×10^8) | 2.499999 | 10^(2.91×10^8) |
+| 2.45 | Pass | 7 | 1,307 | 10,776,252 | 3.78×10^6 | 10^(6.08×10^9) (2.450) | 10^(5.37×10^10) | **10^(2.30×10^16)** | 10^(5.63×10^16) | 2.450000 | 10^(6.45×10^16) |
+| 2.45 | searched | 13 | 1,743 | 1,617 | 536 | 10^698,348 (2.415) | 10^(1.32×10^7) | **10^(3.74×10^8)** | 10^(9.17×10^8) | 2.449999 | 10^(1.05×10^9) |
+| 2.4 | Pass | 8 | 24,771 | 2,341,145,379 | 7.88×10^8 | 10^(2.25×10^13) (2.400) | 10^(2.32×10^14) | **10^(1.77×10^22)** | 10^(4.25×10^22) | 2.400000 | 10^(4.97×10^22) |
+| 2.4 | searched | 16 | 3,207 | 3,043 | 984 | 10^1,991,526 (2.375) | 10^(4.90×10^7) | **10^(1.96×10^9)** | 10^(4.70×10^9) | 2.400000 | 10^(5.50×10^9) |
 
 The "Pass" line jumps around because the smallest admissible c changes with the target. When that c's limit exponent sits just under the target (c = 3 has limit 2.69, so a target of 2.7 is barely above it), condition (10) forces a huge d and then a huge k. The search escapes this by taking a larger c (6 at a target of 2.7) and moving k well past feasibility. That puts the mod-ε identity clearly below the target (2.62 against 2.7) before ε is removed.
 
 ## Quickstart
 
 ```sh
-cargo run --release --bin verify     # 454 exact checks, one line per lemma (~10 min, several GB of memory; --quick skips the 2x2 run)
+cargo run --release --bin verify     # 454 exact checks, one line per lemma (--quick: under a minute; the full run adds the 2x2 chain: 5–10 min and a few GB)
 cargo run --release --bin cost       # faithful + searched cost for target exponent log2 7
 TAUS=strassen,2.6 CMAX=60 DMAX=2500 cargo run --release --bin cost   # more targets, wider search
 ./bench/run.sh                       # regenerate the whole table and chart (~30 min)
@@ -103,7 +103,7 @@ Every quantity follows a formula in Section 4 of the paper. `src/cost.rs` cites 
 
 ## What this verifies and what it does not
 
-- **Verified:** finite instances of every lemma, built exactly as the proofs describe and checked exactly, plus the full chain end to end on 2×2 integer matrices. Also, that the cost model's ε bookkeeping matches the materialized constructions.
+- **Verified:** finite instances of every lemma, built exactly as the proofs describe and checked exactly, plus two end-to-end pipelines: the real gadgets through Bini's conversion, and the round chain on minimal inputs multiplying 2×2 integer matrices. Also, that the cost model's ε bookkeeping matches the materialized constructions.
 - **Not verified:** the proof in general. The checks cover all a, b ≤ 3, but they say nothing about all a, b, t, about the counting in Claim 3.3 beyond the instances run, or about the limit argument in Thm 4.3. Pass's paper reports a Lean formalization of its rational identities (about 3,600 lines, generated by Aristotle, which the paper says it has not independently verified). That covers the general statements, which this repo does not try to do. What this repo adds is concrete costs and a construction you can run.
 - **What runs end to end, and what is only checked piece by piece.** The round lemma needs input packings with w ≥ u, and the real ones (Thm 3.1 → 3.2 → 3.4) have u = c^{2d} ≥ 4 sources. A single round at the smallest real parameters (c = 2, d = 1, w = u = 4) already has 4,096 sources of shape Q_{3,3}[16,16,16], about 6×10^9 coordinates, so it cannot be materialized. OpenAI's 3-for-1 gadget has u = 1, but then the second length step no longer matches L' (Thm 4.3 needs c ≥ 2).
   - The 2×2 run therefore feeds the round the minimal valid input: an exact embedding T_{a,b} → T_{a,b'} with w = u = 1, which Lemma 4.2's hypothesis allows. It shows that the round, composition (with the ε → ε^N substitution, when the inputs are given an ε-perturbation), Lemma 2.3 and Bini compose into a correct matrix multiplication. Its source count matches E_k = 64·3^6·x³.
@@ -114,7 +114,7 @@ Every quantity follows a formula in Section 4 of the paper. `src/cost.rs` cites 
 ## Design decisions
 
 - **Exact over F_p, not floating point.** Bini-style algorithms cancel huge negative powers of ε. Any numerical ε would test approximation quality rather than the identity.
-- **Materialized maps.** Each construction produces concrete sparse matrices, not a closure, so its ε-exponent ranges can be read off and compared with the cost model. The cost is memory. The 2×2 chain has 373,248 sources and takes a few minutes.
+- **Materialized maps.** Each construction produces concrete sparse matrices, not a closure, so its ε-exponent ranges can be read off and compared with the cost model. The cost is memory. The 2×2 chain has 373,248 sources and takes 5–10 minutes and a few GB.
 - **Paper's type labels for amplification.** When a + b − 1 = 1, Full and Mid have identical supports. The kept words are chosen by the labels in Claim 3.3 (primal Mid is the last target, the dual swaps types), not by looking at shapes. Choosing by shape keeps unbalanced words, which still carry ε.
 - **Log space for the cost.** Exact big integers are used where they fit (u, w, ⌊w/u⌋ below 2^20000; L_k below 2^100). Beyond that, the code uses log2 values with upper-bound rounding.
 

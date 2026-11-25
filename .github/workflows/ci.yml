@@ -11,7 +11,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: tests (including the end-to-end chain)
         run: cargo test --release -- --include-ignored
-      - name: verify every lemma
-        run: cargo run --release --bin verify
+      - name: verify every lemma (quick: skips the 2x2 chain, which the ignored test covers)
+        run: cargo run --release --bin verify -- --quick
       - name: cost model reproduces the committed headline rows
         run: cargo build --release --bin cost && python3 scripts/check_bench.py

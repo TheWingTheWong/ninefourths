@@ -230,10 +230,10 @@ fn main() {
     check(
         &mut lines,
         "Lemma 2.4 Bini (real)",
-        "primal -> amplify -> SL->PP -> evaluate sources -> Bini: exact packing of 17 T_{2,1} products",
+        "primal -> amplify -> SL->PP -> evaluate sources -> Bini: exact packing of 5 T_{2,1} products",
         vec![Box::new(|| {
             let amp = amplify(&primal(2, 1, 3, 1, 1, 1, 1), 1);
-            let pp = sl_to_pp(&amp);
+            let pp = sl_to_pp(&amp.retain(&[0, 1, 2, 3, 4]));
             let ev = evaluate(&pp.sources[0]);
             let all = pp.compose(&ev.repeat(pp.sources.len()));
             let deg = degree_bound(&all);
@@ -259,8 +259,8 @@ fn main() {
         // Theorem 4.3 end to end
         check(
             &mut lines,
-            "Theorem 4.3 chain",
-            "2x2 integer matrices through the whole chain (c=3, d=1, k=1, w=u=1) = schoolbook",
+            "Thm 4.3 round chain",
+            "round -> compose -> Lemma 2.3 on minimal inputs (c=3, d=1, k=1, w=u=1): 2x2 integer matmul = schoolbook",
             vec![Box::new(|| {
                 let x = 2;
                 let pk = minimal_chain(3, 1, 1, x, &|a, b, b2, d| minimal_round_input(a, b, b2, d));

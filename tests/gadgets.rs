@@ -198,7 +198,7 @@ fn round_lemma_with_minimal_inputs() {
 }
 
 #[test]
-#[ignore = "slow (~3 min): run with --include-ignored"]
+#[ignore = "slow (several minutes, a few GB): run with --include-ignored"]
 fn minimal_chain_multiplies_matrices() {
     use ninefourths::field as f;
     use ninefourths::laurent::Laurent;
@@ -245,5 +245,19 @@ fn minimal_chain_mod_eps_then_bini() {
     let ex = bini(&pk, bound);
     assert!(ex.is_exact());
     assert_eq!(ex.sources.len(), (bound + 1) * pk.sources.len());
+    ex.verify(&mut rng, 1).unwrap();
+}
+
+#[test]
+fn bini_on_the_constructions_own_eps() {
+    let mut rng = Rng(41);
+    let amp = amplify(&primal(2, 1, 3, 1, 1, 1, 1), 1);
+    let pp = sl_to_pp(&amp.retain(&[0, 1, 2, 3, 4]));
+    let ev = evaluate(&pp.sources[0]);
+    let all = pp.compose(&ev.repeat(pp.sources.len()));
+    assert!(!all.is_exact());
+    all.verify(&mut rng, 1).unwrap();
+    let ex = bini(&all, degree_bound(&all));
+    assert!(ex.is_exact());
     ex.verify(&mut rng, 1).unwrap();
 }
