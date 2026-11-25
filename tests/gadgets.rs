@@ -143,3 +143,56 @@ fn sl_to_pp_small() {
     assert_eq!(pp.sources.len(), 3);
     pp.verify(&mut rng, 2).unwrap();
 }
+
+#[test]
+fn lemma_2_3_evaluation_uses_exactly_effort_products() {
+    let mut rng = Rng(23);
+    let mut shapes = vec![
+        Shape::full(3, 2, 1, 1, 1),
+        Shape::mid(3, 2, 1, 1, 1),
+        Shape::mid(2, 4, 2, 1, 2),
+        Shape::full(1, 1, 2, 3, 2),
+        t_shape(2, 2, 1),
+        t_shape(2, 1, 2),
+    ];
+    let t = t_shape(2, 1, 1);
+    shapes.push(t.tensor(&t.ex12().0).tensor(&t.ex12().0.ex23().0.ex12().0));
+    for s in shapes {
+        let pk = evaluate(&s);
+        assert_eq!(pk.sources.len() as u128, s.effort(), "{s:?}");
+        assert!(pk.is_exact());
+        pk.verify(&mut rng, 2).unwrap();
+    }
+}
+
+fn toy_input(a: usize, b: usize, b2: usize, d: usize, perturb: bool) -> ninefourths::packing::Packing {
+    use ninefourths::laurent::Laurent;
+    let mut pk = embedding(&t_shape(a, b, d), &t_shape(a, b2, d));
+    if perturb {
+        // ER·ε⁻¹, D·ε, plus an ε·junk term in D: valid modulo ε, with negative powers
+        pk.er = pk.er.scale(&Laurent::mono(1, -1));
+        pk.d = pk.d.scale(&Laurent::mono(1, 1));
+        for i in 0..pk.d.nrows {
+            pk.d.add_entry(i, (i * 7) % pk.d.ncols, &Laurent::mono(5, 2));
+        }
+    }
+    pk
+}
+
+#[test]
+fn round_lemma_with_minimal_inputs() {
+    let mut rng = Rng(29);
+    for &perturb in &[false, true] {
+        let (l, l2, d) = (1, 2, 1);
+        let p1 = toy_input(l, l, l2, d, perturb);
+        let p2 = toy_input(l2, l, l2, d, perturb);
+        p1.verify(&mut rng, 1).unwrap();
+        p2.verify(&mut rng, 1).unwrap();
+        let rp = RoundParams { l, l2, d, w: 1, u: 1, x: 1 };
+        let r = round(&p1, &p2, rp);
+        assert_eq!(r.targets.len(), 1);
+        assert_eq!(r.sources.len(), 64);
+        assert_eq!(r.targets[0], q_shape(1, 1, 1, 1, 1, 1));
+        r.verify(&mut rng, 1).unwrap();
+    }
+}

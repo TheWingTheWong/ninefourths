@@ -520,7 +520,7 @@ pub fn search(tau: f64, c_max: u64, d_max: u64) -> Option<Best> {
             }
             let Some(k0) = first_feasible_k(c, d, tau) else { continue };
             let mut local: Option<(u64, f64)> = None;
-            let mut try_k = |k: u64, local: &mut Option<(u64, f64)>, best: &mut Option<Best>| {
+            let try_k = |k: u64, local: &mut Option<(u64, f64)>, best: &mut Option<Best>| {
                 if let Some((p, cst)) = exact_at(c, d, k, tau) {
                     if local.map(|l| cst.log2_rr < l.1).unwrap_or(true) {
                         *local = Some((k, cst.log2_rr));

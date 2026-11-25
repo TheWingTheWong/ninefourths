@@ -144,3 +144,25 @@ impl Sparse {
         (lo, hi)
     }
 }
+
+impl Sparse {
+    /// Evaluate every entry at ε = e (nonzero), giving an ε-free map.
+    pub fn at_eps(&self, e: u64) -> Sparse {
+        Sparse {
+            nrows: self.nrows,
+            ncols: self.ncols,
+            rows: self
+                .rows
+                .iter()
+                .map(|r| r.iter().map(|(j, x)| (*j, Laurent::constant(x.eval(e)))).filter(|(_, x)| !x.is_zero()).collect())
+                .collect(),
+        }
+    }
+    pub fn scale(&self, x: &Laurent) -> Sparse {
+        Sparse {
+            nrows: self.nrows,
+            ncols: self.ncols,
+            rows: self.rows.iter().map(|r| r.iter().map(|(j, y)| (*j, y.mul(x))).filter(|(_, y)| !y.is_zero()).collect()).collect(),
+        }
+    }
+}

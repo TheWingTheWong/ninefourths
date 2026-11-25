@@ -309,3 +309,345 @@ pub fn vstack(blocks: &[Sparse]) -> Sparse {
     }
     out
 }
+
+// ---------------------------------------------------------------------------
+// Elementary packings
+// ---------------------------------------------------------------------------
+
+/// Exact packing of `t` into `s` by zero padding, valid when every support
+/// of `t` is contained in the corresponding support of `s` and the matrix
+/// dims of `t` are ≤ those of `s` (inputs embedded, outputs selected).
+pub fn embedding(t: &Shape, s: &Shape) -> Packing {
+    assert_eq!(t.nvars, s.nvars);
+    let emb = |ts: &Vec<crate::shape::Mono>, ss: &Vec<crate::shape::Mono>, ta: usize, tb: usize, sa: usize, sb: usize| {
+        // returns for each source coordinate the target coordinate (or None)
+        let idx: std::collections::HashMap<&crate::shape::Mono, usize> = ts.iter().enumerate().map(|(i, m)| (m, i)).collect();
+        let mut src = vec![None; ss.len() * sa * sb];
+        for (si, m) in ss.iter().enumerate() {
+            if let Some(&ti) = idx.get(m) {
+                for x in 0..ta {
+                    for y in 0..tb {
+                        src[si * sa * sb + x * sb + y] = Some(ti * ta * tb + x * tb + y);
+                    }
+                }
+            }
+        }
+        for m in ts {
+            assert!(ss.contains(m), "embedding: support not contained");
+        }
+        src
+    };
+    assert!(t.p <= s.p && t.q <= s.q && t.r <= s.r);
+    let el = Sparse::select(&emb(&t.i, &s.i, t.p, t.q, s.p, s.q), t.size(Role::Left));
+    let er = Sparse::select(&emb(&t.j, &s.j, t.q, t.r, s.q, s.r), t.size(Role::Right));
+    let dsel = Sparse::select(&emb(&t.k, &s.k, t.p, t.r, s.p, s.r), t.size(Role::Out));
+    let pk = Packing { targets: vec![t.clone()], sources: vec![s.clone()], same_left: false, el, er, d: dsel.transpose() };
+    pk.check_dims();
+    pk
+}
+
+/// Identity packing of one shape.
+pub fn identity(t: &Shape) -> Packing {
+    embedding(t, t)
+}
+
+/// Observation 2.5: append unused sources.
+pub fn add_unused_sources(pk: &Packing, extra: &[Shape]) -> Packing {
+    let mut out = pk.clone();
+    for s in extra {
+        out.sources.push(s.clone());
+        out.el.nrows += s.size(Role::Left);
+        out.el.rows.extend(vec![vec![]; s.size(Role::Left)]);
+        out.er.nrows += s.size(Role::Right);
+        out.er.rows.extend(vec![vec![]; s.size(Role::Right)]);
+        out.d.ncols += s.size(Role::Out);
+    }
+    out.check_dims();
+    out
+}
+
+/// Stack packings with the same sources' structure: the direct sum, used to
+/// replace every source by a packing of it (compose with a block of inner packings).
+pub fn direct_sum(parts: &[Packing]) -> Packing {
+    let targets = parts.iter().flat_map(|p| p.targets.iter().cloned()).collect();
+    let sources = parts.iter().flat_map(|p| p.sources.iter().cloned()).collect();
+    for p in parts {
+        assert!(!p.same_left);
+    }
+    let bd = |f: &dyn Fn(&Packing) -> Sparse| Sparse::block_diag(&parts.iter().map(f).collect::<Vec<_>>());
+    let pk = Packing { targets, sources, same_left: false, el: bd(&|p| p.el.clone()), er: bd(&|p| p.er.clone()), d: bd(&|p| p.d.clone()) };
+    pk.check_dims();
+    pk
+}
+
+/// Replace each source of `pk` by its padded version `new[j]` (Observation 2.5: zero-pad source matrices).
+pub fn pad_sources(pk: &Packing, new: &[Shape]) -> Packing {
+    let parts: Vec<Packing> = pk.sources.iter().zip(new).map(|(s, n)| embedding(s, n)).collect();
+    pk.compose(&direct_sum(&parts))
+}
+
+// ---------------------------------------------------------------------------
+// Lemma 2.3: exact evaluation of a selected product by scalar multiplications
+// ---------------------------------------------------------------------------
+
+/// Exact packing of the univariate product with supports given as exponent
+/// intervals (natural direction: evaluate both inputs at a+b−1 points,
+/// interpolate the product, select K), into 1×1 matmul sources.
+fn interp_natural(t: &Shape) -> Packing {
+    assert_eq!(t.nvars, 1);
+    assert_eq!((t.p, t.q, t.r), (1, 1, 1));
+    let ilo = t.i.iter().map(|m| m[0]).min().unwrap();
+    let ihi = t.i.iter().map(|m| m[0]).max().unwrap();
+    let jlo = t.j.iter().map(|m| m[0]).min().unwrap();
+    let jhi = t.j.iter().map(|m| m[0]).max().unwrap();
+    let a = (ihi - ilo + 1) as usize;
+    let b = (jhi - jlo + 1) as usize;
+    let n = a + b - 1;
+    let pts: Vec<u64> = (1..=n as u64).collect();
+    let src = Shape::matmul(1, 1, 1);
+    let mut el = Sparse::zeros(n, t.i.len());
+    let mut er = Sparse::zeros(n, t.j.len());
+    for (k, &x) in pts.iter().enumerate() {
+        for (ui, u) in t.i.iter().enumerate() {
+            el.add_entry(k, ui, &Laurent::constant(f::pow(x, (u[0] - ilo) as u64)));
+        }
+        for (vi, v) in t.j.iter().enumerate() {
+            er.add_entry(k, vi, &Laurent::constant(f::pow(x, (v[0] - jlo) as u64)));
+        }
+    }
+    // inverse Vandermonde: coefficient e of the product = Σ_k V^{-1}[e][k] y_k
+    let vinv = vandermonde_inverse(&pts);
+    let mut d = Sparse::zeros(t.k.len(), n);
+    for (wi, w) in t.k.iter().enumerate() {
+        let e = w[0] - ilo - jlo;
+        if e < 0 || e >= n as i32 {
+            continue;
+        }
+        for k in 0..n {
+            d.add_entry(wi, k, &Laurent::constant(vinv[e as usize][k]));
+        }
+    }
+    let pk = Packing { targets: vec![t.clone()], sources: vec![src; n], same_left: false, el, er, d };
+    pk.check_dims();
+    pk
+}
+
+/// Inverse of the Vandermonde matrix V[k][e] = x_k^e, over F_p (Gauss–Jordan).
+pub fn vandermonde_inverse(xs: &[u64]) -> Vec<Vec<u64>> {
+    let n = xs.len();
+    let mut m: Vec<Vec<u64>> = (0..n).map(|k| (0..n).map(|e| f::pow(xs[k], e as u64)).collect()).collect();
+    let mut inv: Vec<Vec<u64>> = (0..n).map(|i| (0..n).map(|j| (i == j) as u64).collect()).collect();
+    for col in 0..n {
+        let piv = (col..n).find(|&r| m[r][col] != 0).unwrap();
+        m.swap(col, piv);
+        inv.swap(col, piv);
+        let iv = f::inv(m[col][col]);
+        for j in 0..n {
+            m[col][j] = f::mul(m[col][j], iv);
+            inv[col][j] = f::mul(inv[col][j], iv);
+        }
+        for r in 0..n {
+            if r != col && m[r][col] != 0 {
+                let fct = m[r][col];
+                for j in 0..n {
+                    m[r][j] = f::sub(m[r][j], f::mul(fct, m[col][j]));
+                    inv[r][j] = f::sub(inv[r][j], f::mul(fct, inv[col][j]));
+                }
+            }
+        }
+    }
+    // V c = y  =>  c = V^{-1} y; we built V as rows k, cols e, so inv is (e, k).
+    inv
+}
+
+/// Lemma 2.3 for one univariate scalar factor: pick the role exchange with
+/// the smallest interpolation size, as in the proof.
+fn interp_univariate(t: &Shape) -> Packing {
+    let len = |s: &Vec<crate::shape::Mono>| {
+        (s.iter().map(|m| m[0]).max().unwrap() - s.iter().map(|m| m[0]).min().unwrap() + 1) as usize
+    };
+    let (a, b, h) = (len(&t.i), len(&t.j), len(&t.k));
+    let best = (a + b - 1).min(a + h - 1).min(b + h - 1);
+    let pk = if a + b - 1 == best {
+        interp_natural(t)
+    } else if a + h - 1 == best {
+        // (23): P^{23} has input lengths (a, h)
+        let (t23, _) = t.ex23();
+        interp_natural(&t23).ex23()
+    } else {
+        // (13): P^{13} has input lengths (h, b)
+        let t13 = t.ex12().0.ex23().0.ex12().0;
+        interp_natural(&t13).ex13()
+    };
+    // restore the target's support ordering
+    let tt = pk.targets[0].clone();
+    let n = pk.rename_target(0, t, &[0]);
+    let _ = tt;
+    // sources of exchanged scalar packings are 1×1 matmuls (supports {()})
+    n
+}
+
+/// Schoolbook matmul [p,q,r] as an exact packing into pqr scalar products.
+pub fn schoolbook(p: usize, q: usize, r: usize) -> Packing {
+    let t = Shape::matmul(p, q, r);
+    let n = p * q * r;
+    let mut el = Sparse::zeros(n, p * q);
+    let mut er = Sparse::zeros(n, q * r);
+    let mut d = Sparse::zeros(p * r, n);
+    let one = Laurent::constant(1);
+    let mut s = 0;
+    for a in 0..p {
+        for b in 0..q {
+            for c in 0..r {
+                el.add_entry(s, a * q + b, &one);
+                er.add_entry(s, b * r + c, &one);
+                d.add_entry(a * r + c, s, &one);
+                s += 1;
+            }
+        }
+    }
+    Packing { targets: vec![t], sources: vec![Shape::matmul(1, 1, 1); n], same_left: false, el, er, d }
+}
+
+/// Lemma 2.3: exact packing of a selected product whose supports are products
+/// of univariate intervals, into eff(P) scalar multiplications.
+pub fn evaluate(t: &Shape) -> Packing {
+    // univariate factors
+    let factor = |v: usize| -> Shape {
+        let col = |s: &Vec<crate::shape::Mono>| {
+            let mut e: Vec<i32> = s.iter().map(|m| m[v]).collect();
+            e.sort();
+            e.dedup();
+            e.into_iter().map(|x| vec![x]).collect::<Vec<_>>()
+        };
+        Shape { nvars: 1, i: col(&t.i), j: col(&t.j), k: col(&t.k), p: 1, q: 1, r: 1 }
+    };
+    let mut pk = schoolbook(t.p, t.q, t.r);
+    for v in 0..t.nvars {
+        pk = interp_univariate(&factor(v)).tensor(&pk);
+    }
+    // the tensor's target is the product shape with variable order (v_{n-1}, ..., v_0, matrix)
+    let tgt = pk.targets[0].clone();
+    assert_eq!(tgt.nvars, t.nvars);
+    let perm: Vec<usize> = (0..t.nvars).rev().collect();
+    assert!(tgt.rename(&perm).same_as_sets(t), "Lemma 2.3 needs product supports");
+    let mut out = pk.rename_target(0, t, &perm);
+    // sources are 1×1 matmuls in t.nvars "variables" of exponent 0 — normalise to Shape::matmul(1,1,1)
+    let m = Shape::matmul(1, 1, 1);
+    for j in 0..out.sources.len() {
+        out.sources[j] = m.clone();
+    }
+    out
+}
+
+// ---------------------------------------------------------------------------
+// Lemma 4.1 / 4.2: the round
+// ---------------------------------------------------------------------------
+
+/// Q_{a,b}[p,q,r] := T_{a,b} ⊗ T_{a,b}^{12} ⊗ T_{a,b}^{13} ⊗ (matmul [p,q,r]) (Lemma 4.1).
+pub fn q_shape(a: usize, b: usize, d: usize, p: usize, q: usize, r: usize) -> Shape {
+    let t = t_shape(a, b, d);
+    let t12 = t.ex12().0;
+    let t13 = t.ex12().0.ex23().0.ex12().0;
+    t.tensor(&t12).tensor(&t13).tensor(&Shape::matmul(p, q, r))
+}
+
+/// Rename every target and source of `pk` to the given canonical shapes
+/// (each must be isomorphic; Lemma 2.10).
+pub fn canonicalize(pk: &Packing, targets: &[Shape], sources: &[Shape]) -> Packing {
+    let mut out = pk.clone();
+    for (i, t) in targets.iter().enumerate() {
+        if &out.targets[i] != t {
+            let perm = out.targets[i].find_isomorphism(t).unwrap_or_else(|| panic!("target {i} not isomorphic to canonical shape"));
+            out = out.rename_target(i, t, &perm);
+        }
+    }
+    for (j, s) in sources.iter().enumerate() {
+        if &out.sources[j] != s {
+            let perm = out.sources[j].find_isomorphism(s).unwrap_or_else(|| panic!("source {j} not isomorphic to canonical shape"));
+            out = out.rename_source(j, s, &perm);
+        }
+    }
+    out
+}
+
+/// Parameters of one round: lengths L → L', amplification depth d, counts
+/// w ≥ u, Λ = ⌊w/u⌋², side multiplier x.
+#[derive(Clone, Copy, Debug)]
+pub struct RoundParams {
+    pub l: usize,
+    pub l2: usize,
+    pub d: usize,
+    pub w: usize,
+    pub u: usize,
+    pub x: usize,
+}
+
+/// Lemma 4.2. `p1` packs w copies of T_{L,L}[1,1,w] using ≤ 2w copies of
+/// T_{L,L'}[1,1,u]; `p2` the same for (a, b, b') = (L', L, L'). Returns a PP
+/// of w³ copies of Q_{L,L}[w²Λx] using 64w³ copies of Q_{L',L'}[w²x].
+pub fn round(p1: &Packing, p2: &Packing, rp: RoundParams) -> Packing {
+    let RoundParams { l, l2, d, w, u, x } = rp;
+    assert!(w >= u);
+    let lam = (w / u) * (w / u);
+    // tensor P ⊗ P^{12} ⊗ P^{13} ⊗ id(matmul[s,s,s]); canonical shapes; pad sources to 8w³
+    let lift = |pk: &Packing, a: usize, b: usize, b2: usize, side: usize| -> Packing {
+        assert!(pk.sources.len() <= 2 * w);
+        let t = pk.tensor(&pk.ex12()).tensor(&pk.ex13()).tensor(&identity(&Shape::matmul(side, side, side)));
+        let tgt = vec![q_shape(a, b, d, w * side, w * side, w * side); t.targets.len()];
+        let src = vec![q_shape(a, b2, d, u * side, u * side, u * side); t.sources.len()];
+        let t = canonicalize(&t, &tgt, &src);
+        let extra = vec![src[0].clone(); 8 * w * w * w - t.sources.len()];
+        add_unused_sources(&t, &extra)
+    };
+    let first = lift(p1, l, l, l2, w * lam * x); // Q_{L,L}[w²Λx] ← 8w³ Q_{L,L'}[wuΛx]
+    // rename the sources Q_{L,L'} → Q_{L',L} (Lemma 4.1 symmetry)
+    let mid = q_shape(l2, l, d, w * u * lam * x, w * u * lam * x, w * u * lam * x);
+    let first = canonicalize(&first, &first.targets.clone(), &vec![mid.clone(); first.sources.len()]);
+    let second = lift(p2, l2, l, l2, u * lam * x); // Q_{L',L}[wuΛx] ← 8w³ Q_{L',L'}[u²Λx]
+    let second = second.repeat(8);
+    let composed = first.compose(&second);
+    // pad final sources to side w²x
+    let side = w * w * x;
+    let padded = vec![q_shape(l2, l2, d, side, side, side); composed.sources.len()];
+    pad_sources(&composed, &padded)
+}
+
+// ---------------------------------------------------------------------------
+// Lemma 2.4: Bini's approximate-to-exact conversion
+// ---------------------------------------------------------------------------
+
+/// Turn a packing modulo ε whose output has ε-degree ≤ `deg` into an exact
+/// packing: evaluate the maps at deg + 1 nonzero values of ε and interpolate
+/// the constant coefficient. Uses (deg + 1)·#sources sources.
+pub fn bini(pk: &Packing, deg: usize) -> Packing {
+    let pts: Vec<u64> = (1..=(deg + 1) as u64).collect();
+    let w0 = lagrange_at(&pts, 0);
+    let mut sources = vec![];
+    let mut els = vec![];
+    let mut ers = vec![];
+    let mut ds = vec![];
+    for (l, &e) in pts.iter().enumerate() {
+        sources.extend(pk.sources.iter().cloned());
+        els.push(pk.el.at_eps(e));
+        ers.push(pk.er.at_eps(e));
+        ds.push(pk.d.at_eps(e).scale(&Laurent::constant(w0[l])));
+    }
+    // decoder: horizontal concatenation
+    let mut d = Sparse::zeros(pk.d.nrows, pk.d.ncols * pts.len());
+    for (l, dl) in ds.iter().enumerate() {
+        for (i, row) in dl.rows.iter().enumerate() {
+            for (j, x) in row {
+                d.rows[i].push((l * pk.d.ncols + j, x.clone()));
+            }
+        }
+    }
+    let out = Packing { targets: pk.targets.clone(), sources, same_left: pk.same_left, el: vstack(&els), er: vstack(&ers), d };
+    out.check_dims();
+    out
+}
+
+/// Upper bound on the ε-degree of a packing's output: EL.hi + ER.hi + D.hi.
+pub fn degree_bound(pk: &Packing) -> usize {
+    pk.profile().iter().map(|&(_, hi)| hi.max(0) as usize).sum()
+}
