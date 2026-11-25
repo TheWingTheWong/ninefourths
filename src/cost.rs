@@ -187,6 +187,26 @@ pub fn log2_big(x: &BigUint) -> f64 {
 /// as log2 values. Exact big-integer arithmetic below 2^20000, log-space above
 /// (where the floor/ceiling change log2 by less than 2^-19000).
 pub fn log2_u_w_q(c: u64, d: u64) -> (f64, f64, f64) {
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+    thread_local! {
+        static CACHE: RefCell<HashMap<(u64, u64), (f64, f64, f64)>> = RefCell::new(HashMap::new());
+    }
+    if let Some(v) = CACHE.with(|ch| ch.borrow().get(&(c, d)).copied()) {
+        return v;
+    }
+    let v = log2_u_w_q_uncached(c, d);
+    CACHE.with(|ch| {
+        let mut ch = ch.borrow_mut();
+        if ch.len() > 4096 {
+            ch.clear();
+        }
+        ch.insert((c, d), v);
+    });
+    v
+}
+
+fn log2_u_w_q_uncached(c: u64, d: u64) -> (f64, f64, f64) {
     let (n, m) = (c, c + 2);
     let bits = 2.0 * d as f64 * (m as f64).log2();
     if bits < 20_000.0 {
@@ -517,8 +537,8 @@ pub fn first_feasible_k(c: u64, d: u64, tau: f64) -> Option<u64> {
 }
 
 /// Grid search over c ∈ [3, c_max], d ∈ [1, d_max] and k ∈ [k0, 64 k0]
-/// (k0 = first feasible k; 4000 log-spaced samples, then a unit-step
-/// refinement around the best sample), with the smallest feasible Bini power
+/// (k0 = first feasible k; 1500 log-spaced samples, then a refinement of
+/// ≤ 2000 points around the best sample, unit steps when k < ~10^6), with the smallest feasible Bini power
 /// h at each point. Objective: minimise log2 R of the exact identity with
 /// exponent < tau. Retains the full w of (8).
 pub fn search(tau: f64, c_max: u64, d_max: u64) -> Option<Best> {
@@ -531,7 +551,12 @@ pub fn search(tau: f64, c_max: u64, d_max: u64) -> Option<Best> {
                 sc.spawn(move || {
                     let mut best: Option<Best> = None;
                     for c in mine {
-                        if let Some(b) = search_c(tau, c, d_max, best.map(|b| b.cost.log2_rr)) {
+                        let t0 = std::time::Instant::now();
+                        let r = search_c(tau, c, d_max, best.map(|b| b.cost.log2_rr));
+                        if std::env::var("SEARCH_TRACE").is_ok() {
+                            eprintln!("c={c} {:.2}s", t0.elapsed().as_secs_f64());
+                        }
+                        if let Some(b) = r {
                             if best.map(|x| b.cost.log2_rr < x.cost.log2_rr).unwrap_or(true) {
                                 best = Some(b);
                             }
@@ -592,7 +617,8 @@ pub fn search_c(tau: f64, c: u64, d_max: u64, bound: Option<f64>) -> Option<Best
             }
             if let Some((kb, _)) = local {
                 let span = (kb as f64 * (64f64.powf(1.0 / samples as f64) - 1.0)).ceil() as u64 + 1;
-                for k in kb.saturating_sub(span).max(k0)..=kb + span {
+                let step = (span / 1000).max(1) as usize;
+                for k in (kb.saturating_sub(span).max(k0)..=kb + span).step_by(step) {
                     try_k(k, &mut local, &mut best);
                 }
             }

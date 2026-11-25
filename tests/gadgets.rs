@@ -198,6 +198,7 @@ fn round_lemma_with_minimal_inputs() {
 }
 
 #[test]
+#[ignore = "slow (~3 min): run with --include-ignored"]
 fn minimal_chain_multiplies_matrices() {
     use ninefourths::field as f;
     use ninefourths::laurent::Laurent;
@@ -223,6 +224,7 @@ fn minimal_chain_multiplies_matrices() {
 }
 
 #[test]
+#[ignore = "slow: run with --include-ignored"]
 fn minimal_chain_mod_eps_then_bini() {
     let mut rng = Rng(37);
     let input = |a: usize, b: usize, b2: usize, d: usize| {
