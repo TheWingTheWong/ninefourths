@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="470" viewBox="0 0 860 470" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+<rect width="100%" height="100%" fill="#fcfcfb"/>
+<text x="78" y="26" font-size="17" font-weight="600" fill="#1f1f1e">How big is the matrix-multiplication identity in Pass's ω ≤ 9/4 proof?</text>
+<text x="78" y="45" font-size="12.5" fill="#5f5e5a">Side of the smallest identity whose exponent is below the target, as a number of decimal digits (log scale)</text>
+<line x1="78" x2="610" y1="412.0" y2="412.0" stroke="#e6e5e0" stroke-width="1"/>
+<text x="70" y="416.0" font-size="12" fill="#5f5e5a" text-anchor="end">10<tspan dy="-6" font-size="9">4</tspan></text>
+<line x1="78" x2="610" y1="357.5" y2="357.5" stroke="#e6e5e0" stroke-width="1"/>
+<text x="70" y="361.5" font-size="12" fill="#5f5e5a" text-anchor="end">10<tspan dy="-6" font-size="9">8</tspan></text>
+<line x1="78" x2="610" y1="303.1" y2="303.1" stroke="#e6e5e0" stroke-width="1"/>
+<text x="70" y="307.1" font-size="12" fill="#5f5e5a" text-anchor="end">10<tspan dy="-6" font-size="9">12</tspan></text>
+<line x1="78" x2="610" y1="248.6" y2="248.6" stroke="#e6e5e0" stroke-width="1"/>
+<text x="70" y="252.6" font-size="12" fill="#5f5e5a" text-anchor="end">10<tspan dy="-6" font-size="9">16</tspan></text>
+<line x1="78" x2="610" y1="194.2" y2="194.2" stroke="#e6e5e0" stroke-width="1"/>
+<text x="70" y="198.2" font-size="12" fill="#5f5e5a" text-anchor="end">10<tspan dy="-6" font-size="9">20</tspan></text>
+<line x1="78" x2="610" y1="139.7" y2="139.7" stroke="#e6e5e0" stroke-width="1"/>
+<text x="70" y="143.7" font-size="12" fill="#5f5e5a" text-anchor="end">10<tspan dy="-6" font-size="9">24</tspan></text>
+<line x1="78" x2="610" y1="85.2" y2="85.2" stroke="#e6e5e0" stroke-width="1"/>
+<text x="70" y="89.2" font-size="12" fill="#5f5e5a" text-anchor="end">10<tspan dy="-6" font-size="9">28</tspan></text>
+<text x="18" y="235.0" font-size="12" fill="#5f5e5a" transform="rotate(-90 18 235.0)" text-anchor="middle">digits in the side</text>
+<text x="586.2" y="432" font-size="12" fill="#5f5e5a" text-anchor="middle">2.4</text>
+<text x="526.8" y="432" font-size="12" fill="#5f5e5a" text-anchor="middle">2.45</text>
+<text x="467.3" y="432" font-size="12" fill="#5f5e5a" text-anchor="middle">2.5</text>
+<text x="348.4" y="432" font-size="12" fill="#5f5e5a" text-anchor="middle">2.6</text>
+<text x="229.5" y="432" font-size="12" fill="#5f5e5a" text-anchor="middle">2.7</text>
+<text x="170.0" y="432" font-size="12" fill="#5f5e5a" text-anchor="middle">2.75</text>
+<text x="101.8" y="432" font-size="12" fill="#5f5e5a" text-anchor="middle">2.807 (Strassen)</text>
+<text x="344.0" y="458" font-size="12" fill="#5f5e5a" text-anchor="middle">target exponent  (identity must use fewer than side^target multiplications)</text>
+<line x1="78" x2="610" y1="412" y2="412" stroke="#8a8984" stroke-width="1"/>
+<path d="M101.8,250.5 L170.0,225.0 L229.5,143.6 L348.4,195.1 L467.3,103.7 L526.8,155.0 L586.2,65.6" fill="none" stroke="#2a78d6" stroke-width="2"/>
+<circle cx="101.8" cy="250.5" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>Exact identity, Pass's parameter rules, target 2.8074: side 10^(7.327e+15); c=3 d=133 k=26933 h=2390981000.0</title></circle>
+<circle cx="170.0" cy="225.0" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>Exact identity, Pass's parameter rules, target 2.7500: side 10^(5.388e+17); c=3 d=292 k=130712 h=16215170000.0</title></circle>
+<circle cx="229.5" cy="143.6" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>Exact identity, Pass's parameter rules, target 2.7000: side 10^(5.178e+23); c=3 d=2411 k=3662112 h=66291520000000.0</title></circle>
+<circle cx="348.4" cy="195.1" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>Exact identity, Pass's parameter rules, target 2.6000: side 10^(8.574e+19); c=4 d=654 k=505349 h=372859100000.0</title></circle>
+<circle cx="467.3" cy="103.7" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>Exact identity, Pass's parameter rules, target 2.5000: side 10^(4.399e+26); c=5 d=6879 k=61739695 h=1775370000000000.0</title></circle>
+<circle cx="526.8" cy="155.0" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>Exact identity, Pass's parameter rules, target 2.4500: side 10^(7.461e+22); c=7 d=1307 k=5388108 h=24536240000000.0</title></circle>
+<circle cx="586.2" cy="65.6" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>Exact identity, Pass's parameter rules, target 2.4000: side 10^(2.768e+29); c=8 d=24771 k=1170277231 h=2.465064e+16</title></circle>
+<text x="620" y="69.6" font-size="12" fill="#1f1f1e"><tspan fill="#2a78d6">●</tspan> Exact identity, Pass's parameter rules</text>
+<path d="M101.8,384.3 L170.0,380.8 L229.5,377.4 L348.4,368.6 L467.3,357.3 L526.8,349.7 L586.2,339.9" fill="none" stroke="#eb6834" stroke-width="2"/>
+<circle cx="101.8" cy="384.3" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>Exact identity, searched parameters, target 2.8074: side 10^(1.079e+06); c=5 d=209 k=147 h=60.0</title></circle>
+<circle cx="170.0" cy="380.8" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>Exact identity, searched parameters, target 2.7500: side 10^(1.954e+06); c=6 d=265 k=194 h=76.0</title></circle>
+<circle cx="229.5" cy="377.4" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>Exact identity, searched parameters, target 2.7000: side 10^(3.498e+06); c=6 d=320 k=238 h=92.0</title></circle>
+<circle cx="348.4" cy="368.6" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>Exact identity, searched parameters, target 2.6000: side 10^(1.544e+07); c=7 d=545 k=428 h=152.0</title></circle>
+<circle cx="467.3" cy="357.3" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>Exact identity, searched parameters, target 2.5000: side 10^(1.036e+08); c=10 d=1084 k=934 h=324.0</title></circle>
+<circle cx="526.8" cy="349.7" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>Exact identity, searched parameters, target 2.4500: side 10^(3.743e+08); c=13 d=1743 k=1617 h=536.0</title></circle>
+<circle cx="586.2" cy="339.9" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>Exact identity, searched parameters, target 2.4000: side 10^(1.96e+09); c=16 d=3207 k=3043 h=984.0</title></circle>
+<text x="620" y="343.9" font-size="12" fill="#1f1f1e"><tspan fill="#eb6834">●</tspan> Exact identity, searched parameters</text>
+<path d="M101.8,408.5 L170.0,406.4 L229.5,404.1 L348.4,398.3 L467.3,391.5 L526.8,386.9 L586.2,380.7" fill="none" stroke="#1baf7a" stroke-width="2"/>
+<circle cx="101.8" cy="408.5" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>Before removing eps (mod-eps), searched, target 2.8074: side 10^(1.798e+04); c=5 d=209 k=147 h=60.0</title></circle>
+<circle cx="170.0" cy="406.4" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>Before removing eps (mod-eps), searched, target 2.7500: side 10^(2.57e+04); c=6 d=265 k=194 h=76.0</title></circle>
+<circle cx="229.5" cy="404.1" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>Before removing eps (mod-eps), searched, target 2.7000: side 10^(3.802e+04); c=6 d=320 k=238 h=92.0</title></circle>
+<circle cx="348.4" cy="398.3" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>Before removing eps (mod-eps), searched, target 2.6000: side 10^(1.016e+05); c=7 d=545 k=428 h=152.0</title></circle>
+<circle cx="467.3" cy="391.5" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>Before removing eps (mod-eps), searched, target 2.5000: side 10^(3.197e+05); c=10 d=1084 k=934 h=324.0</title></circle>
+<circle cx="526.8" cy="386.9" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>Before removing eps (mod-eps), searched, target 2.4500: side 10^(6.983e+05); c=13 d=1743 k=1617 h=536.0</title></circle>
+<circle cx="586.2" cy="380.7" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>Before removing eps (mod-eps), searched, target 2.4000: side 10^(1.992e+06); c=16 d=3207 k=3043 h=984.0</title></circle>
+<text x="620" y="384.7" font-size="12" fill="#1f1f1e"><tspan fill="#1baf7a">●</tspan> Before removing eps (mod-eps), searched</text>
+</svg>

@@ -23,10 +23,12 @@ o = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox=
      f'<rect width="100%" height="100%" fill="#fcfcfb"/>',
      f'<text x="{ml}" y="26" font-size="17" font-weight="600" fill="#1f1f1e">How big is the matrix-multiplication identity in Pass\'s ω ≤ 9/4 proof?</text>',
      f'<text x="{ml}" y="45" font-size="12.5" fill="#5f5e5a">Side of the smallest identity whose exponent is below the target, as a number of decimal digits (log scale)</text>']
-for e in range(ymin, ymax + 1):
+step = max(1, math.ceil((ymax - ymin) / 8))
+ymin -= ymin % step
+for e in range(ymin, ymax + 1, step):
     y = Y(e)
     o.append(f'<line x1="{ml}" x2="{ml+pw}" y1="{y:.1f}" y2="{y:.1f}" stroke="#e6e5e0" stroke-width="1"/>')
-    o.append(f'<text x="{ml-8}" y="{y+4:.1f}" font-size="12" fill="#5f5e5a" text-anchor="end">10^{e}</text>')
+    o.append(f'<text x="{ml-8}" y="{y+4:.1f}" font-size="12" fill="#5f5e5a" text-anchor="end">10<tspan dy="-6" font-size="9">{e}</tspan></text>')
 o.append(f'<text x="18" y="{mt+ph/2}" font-size="12" fill="#5f5e5a" transform="rotate(-90 18 {mt+ph/2})" text-anchor="middle">digits in the side</text>')
 for t in taus:
     lab = "2.807 (Strassen)" if abs(t - math.log2(7)) < 1e-4 else f"{t:g}"

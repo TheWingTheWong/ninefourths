@@ -12,7 +12,26 @@ Every construction in the proof is a working program here. The primal (c+2)-for-
 
 ![cost chart](assets/cost.svg)
 
-COST_TABLE
+Every row is produced by `cargo run --release --bin cost` and stored in [`bench/cost_table.jsonl`](bench/cost_table.jsonl). "Pass" takes the smallest value the proof allows at each step. "Searched" applies the same lemmas with other parameter values. ε-degree is the degree in ε of the approximate identity, and h is the number of tensor powers Bini's conversion needs to remove it.
+
+| target exponent | parameters | c | d | k | h | mod-ε side v (exponent) | ε-degree | exact side V | cannot beat Strassen below |
+|---|---|---|---|---|---|---|---|---|---|
+| log2 7 = 2.807 | Pass | 3 | 133 | 26,933 | 2.39×10^9 | 10^3,064,517 (2.807) | 10^9,926,214 | **10^(7.33×10^15)** | 10^(7.33×10^15) |
+| log2 7 = 2.807 | searched | 5 | 209 | 147 | 60 | 10^17,977 (2.712) | 10^103,314 | **10^1,078,625** | 10^1,078,618 |
+| 2.75 | Pass | 3 | 292 | 130,712 | 1.62×10^10 | 10^(3.32×10^7) (2.750) | 10^(1.06×10^8) | **10^(5.39×10^17)** | 10^(5.28×10^17) |
+| 2.75 | searched | 6 | 265 | 194 | 76 | 10^25,704 (2.655) | 10^184,956 | **10^1,953,502** | 10^1,913,577 |
+| 2.7 | Pass | 3 | 2,411 | 3,662,112 | 6.63×10^13 | 10^(7.81×10^9) (2.700) | 10^(2.47×10^10) | **10^(5.18×10^23)** | 10^(4.98×10^23) |
+| 2.7 | searched | 6 | 320 | 238 | 92 | 10^38,019 (2.622) | 10^274,152 | **10^3,497,765** | 10^3,364,005 |
+| 2.6 | Pass | 4 | 654 | 505,349 | 3.73×10^11 | 10^(2.30×10^8) (2.600) | 10^(1.03×10^9) | **10^(8.57×10^19)** | 10^(7.94×10^19) |
+| 2.6 | searched | 7 | 545 | 428 | 152 | 10^101,568 (2.542) | 10^888,412 | **10^(1.54×10^7)** | 10^(1.43×10^7) |
+| 2.5 | Pass | 5 | 6,879 | 61,739,695 | 1.78×10^15 | 10^(2.48×10^11) (2.500) | 10^(1.44×10^12) | **10^(4.40×10^26)** | 10^(3.92×10^26) |
+| 2.5 | searched | 10 | 1,084 | 934 | 324 | 10^319,673 (2.458) | 10^4,365,716 | **10^(1.04×10^8)** | 10^(9.22×10^7) |
+| 2.45 | Pass | 7 | 1,307 | 5,388,108 | 2.45×10^13 | 10^(3.04×10^9) (2.450) | 10^(2.69×10^10) | **10^(7.46×10^22)** | 10^(6.51×10^22) |
+| 2.45 | searched | 13 | 1,743 | 1,617 | 536 | 10^698,348 (2.415) | 10^(1.32×10^7) | **10^(3.74×10^8)** | 10^(3.27×10^8) |
+| 2.4 | Pass | 8 | 24,771 | 1,170,277,231 | 2.47×10^16 | 10^(1.12×10^13) (2.400) | 10^(1.16×10^14) | **10^(2.77×10^29)** | 10^(2.37×10^29) |
+| 2.4 | searched | 16 | 3,207 | 3,043 | 984 | 10^1,991,526 (2.375) | 10^(4.90×10^7) | **10^(1.96×10^9)** | 10^(1.68×10^9) |
+
+The line for Pass's rules jumps around because a lower target sometimes allows a larger c, and Pass's rules then pick a d and k just past the feasibility threshold. Right at that threshold the per-power margin in Bini's conversion is close to zero, so h becomes huge. The search avoids this by moving well past the threshold: it picks k so the mod-ε identity is already clearly below the target (2.71 instead of 2.807) and only then removes ε.
 
 ## Quickstart
 
