@@ -2,9 +2,9 @@
 
 On November 24, 2026 OpenAI posted a preprint claiming that the matrix multiplication exponent ω is exactly 9/4. The upper bound comes from October, and the new lower bound has not yet been checked outside OpenAI. Rafael Pass then published an explicit, constructive algorithm for the upper bound ([arXiv 2610.28627](https://arxiv.org/abs/2610.28627)). This repo builds that algorithm, runs it, and works out what it costs.
 
-**Following Pass's own parameter rules, the smallest exact identity whose exponent beats Strassen's 2.807 has side 10^(7.3×10^15). Searching the free parameters of the same lemmas brings that down to 10^1,078,625 — a matrix side with about a million digits. On multiplication count alone, the algorithm cannot beat Strassen on anything smaller.** Almost all of that size comes from removing the formal parameter ε at the end (Bini's conversion). Before that step, the identity already has exponent 2.71 at side 10^17,977.
+**The best exact identity found here whose exponent is below Strassen's 2.807 multiplies matrices whose side has 1,078,626 digits (V = 10^1,078,625). At that size it uses 10^3,028,063 multiplications, 22 orders of magnitude fewer than Strassen's 10^3,028,085, but nothing smaller can be fed to it without padding.** That is the best point of a grid search over the free parameters of Pass's lemmas (c ≤ 60, d ≤ 2500, k up to 64× its first feasible value). Pass's own choices of c and d (the smallest the proof allows) give an identity of side 10^(1.6×10^11). Almost all of the size comes from removing the formal parameter ε at the end (Bini's conversion). Before that step, the identity already has exponent 2.71 at side 10^17,977, but its ε-degree is 10^103,314, so Bini's conversion needs 60 tensor powers.
 
-Along the way the build turned up one fact the paper doesn't state: **the amplified packing of Lemma 3.2 is exact.** The ε cancels identically on the balanced targets the lemma keeps, so every ε in the final algorithm comes from the interpolation in Lemma 3.4.
+Along the way the build turned up one fact the paper doesn't state: **the amplified packing of Lemma 3.2 is exact.** The ε cancels identically on the balanced targets the lemma keeps, so every ε in the final algorithm comes from the interpolation in Lemma 3.4. It only changes the final size by about 0.8%, because the ε that remains still compounds every round.
 
 ![verify output](assets/verify.svg)
 
@@ -12,33 +12,37 @@ Every construction in the proof is a working program here. The primal (c+2)-for-
 
 ![cost chart](assets/cost.svg)
 
-Every row is produced by `cargo run --release --bin cost` and stored in [`bench/cost_table.jsonl`](bench/cost_table.jsonl). "Pass" takes the smallest value the proof allows at each step. "Searched" applies the same lemmas with other parameter values. ε-degree is the degree in ε of the approximate identity, and h is the number of tensor powers Bini's conversion needs to remove it.
+Every row is produced by [`bench/run.sh`](bench/run.sh) (the `cost` binary) and stored in [`bench/cost_table.jsonl`](bench/cost_table.jsonl). CI recomputes the 2.807 rows and checks them against the file.
+- **Pass:** Pass's (c, d), meaning the smallest c whose limit exponent is below the target and the smallest d satisfying his condition (10). The paper leaves k and h as "sufficiently large", so they are chosen the way the search chooses them.
+- **Searched:** the best (c, d, k, h) on the grid. The grid is c ≤ 60 and d ≤ 2500 (d ≤ 8000 at 2.4), with k sampled from its first feasible value k0 up to 64·k0.
+- **Columns:** h is the number of tensor powers Bini's conversion needs. "Strassen at side V" is 7^⌈log2 V⌉.
 
-| target exponent | parameters | c | d | k | h | mod-ε side v (exponent) | ε-degree | exact side V | cannot beat Strassen below |
-|---|---|---|---|---|---|---|---|---|---|
-| log2 7 = 2.807 | Pass | 3 | 133 | 26,933 | 2.39×10^9 | 10^3,064,517 (2.807) | 10^9,926,214 | **10^(7.33×10^15)** | 10^(7.33×10^15) |
-| log2 7 = 2.807 | searched | 5 | 209 | 147 | 60 | 10^17,977 (2.712) | 10^103,314 | **10^1,078,625** | 10^1,078,618 |
-| 2.75 | Pass | 3 | 292 | 130,712 | 1.62×10^10 | 10^(3.32×10^7) (2.750) | 10^(1.06×10^8) | **10^(5.39×10^17)** | 10^(5.28×10^17) |
-| 2.75 | searched | 6 | 265 | 194 | 76 | 10^25,704 (2.655) | 10^184,956 | **10^1,953,502** | 10^1,913,577 |
-| 2.7 | Pass | 3 | 2,411 | 3,662,112 | 6.63×10^13 | 10^(7.81×10^9) (2.700) | 10^(2.47×10^10) | **10^(5.18×10^23)** | 10^(4.98×10^23) |
-| 2.7 | searched | 6 | 320 | 238 | 92 | 10^38,019 (2.622) | 10^274,152 | **10^3,497,765** | 10^3,364,005 |
-| 2.6 | Pass | 4 | 654 | 505,349 | 3.73×10^11 | 10^(2.30×10^8) (2.600) | 10^(1.03×10^9) | **10^(8.57×10^19)** | 10^(7.94×10^19) |
-| 2.6 | searched | 7 | 545 | 428 | 152 | 10^101,568 (2.542) | 10^888,412 | **10^(1.54×10^7)** | 10^(1.43×10^7) |
-| 2.5 | Pass | 5 | 6,879 | 61,739,695 | 1.78×10^15 | 10^(2.48×10^11) (2.500) | 10^(1.44×10^12) | **10^(4.40×10^26)** | 10^(3.92×10^26) |
-| 2.5 | searched | 10 | 1,084 | 934 | 324 | 10^319,673 (2.458) | 10^4,365,716 | **10^(1.04×10^8)** | 10^(9.22×10^7) |
-| 2.45 | Pass | 7 | 1,307 | 5,388,108 | 2.45×10^13 | 10^(3.04×10^9) (2.450) | 10^(2.69×10^10) | **10^(7.46×10^22)** | 10^(6.51×10^22) |
-| 2.45 | searched | 13 | 1,743 | 1,617 | 536 | 10^698,348 (2.415) | 10^(1.32×10^7) | **10^(3.74×10^8)** | 10^(3.27×10^8) |
-| 2.4 | Pass | 8 | 24,771 | 1,170,277,231 | 2.47×10^16 | 10^(1.12×10^13) (2.400) | 10^(1.16×10^14) | **10^(2.77×10^29)** | 10^(2.37×10^29) |
-| 2.4 | searched | 16 | 3,207 | 3,043 | 984 | 10^1,991,526 (2.375) | 10^(4.90×10^7) | **10^(1.96×10^9)** | 10^(1.68×10^9) |
+| target exponent | parameters | c | d | k | h | mod-ε side v (exponent) | ε-degree | exact side V | multiplications R | Strassen at side V |
+|---|---|---|---|---|---|---|---|---|---|---|
+| log2 7 = 2.807 | Pass | 3 | 133 | 53,867 | 25,801 | 10^6,128,780 (2.807) | 10^(1.99×10^7) | **10^(1.58×10^11)** | 10^(4.44×10^11) | 10^(4.44×10^11) |
+| log2 7 = 2.807 | searched | 5 | 209 | 147 | 60 | 10^17,977 (2.712) | 10^103,314 | **10^1,078,625** | 10^3,028,063 | 10^3,028,085 |
+| 2.75 | Pass | 3 | 292 | 261,393 | 121,846 | 10^(6.64×10^7) (2.750) | 10^(2.12×10^8) | **10^(8.10×10^12)** | 10^(2.23×10^13) | 10^(2.27×10^13) |
+| 2.75 | searched | 6 | 265 | 194 | 76 | 10^25,704 (2.655) | 10^184,956 | **10^1,953,502** | 10^5,372,090 | 10^5,484,174 |
+| 2.7 | Pass | 3 | 2,411 | 7,324,047 | 3.34×10^6 | 10^(1.56×10^10) (2.700) | 10^(4.93×10^10) | **10^(5.21×10^16)** | 10^(1.41×10^17) | 10^(1.46×10^17) |
+| 2.7 | searched | 6 | 318 | 237 | 93 | 10^37,621 (2.622) | 10^271,289 | **10^3,498,796** | 10^9,446,684 | 10^9,822,362 |
+| 2.6 | Pass | 4 | 654 | 1,010,724 | 407,410 | 10^(4.60×10^8) (2.600) | 10^(2.05×10^9) | **10^(1.87×10^14)** | 10^(4.87×10^14) | 10^(5.26×10^14) |
+| 2.6 | searched | 7 | 545 | 428 | 152 | 10^101,568 (2.542) | 10^888,412 | **10^(1.54×10^7)** | 10^(4.01×10^7) | 10^(4.33×10^7) |
+| 2.5 | Pass | 5 | 6,879 | 123,477,188 | 4.51×10^7 | 10^(4.96×10^11) (2.500) | 10^(2.87×10^12) | **10^(2.24×10^19)** | 10^(5.59×10^19) | 10^(6.28×10^19) |
+| 2.5 | searched | 10 | 1,084 | 934 | 324 | 10^319,673 (2.458) | 10^4,365,716 | **10^(1.04×10^8)** | 10^(2.59×10^8) | 10^(2.91×10^8) |
+| 2.45 | Pass | 7 | 1,307 | 10,776,252 | 3.78×10^6 | 10^(6.08×10^9) (2.450) | 10^(5.37×10^10) | **10^(2.30×10^16)** | 10^(5.63×10^16) | 10^(6.45×10^16) |
+| 2.45 | searched | 13 | 1,743 | 1,617 | 536 | 10^698,348 (2.415) | 10^(1.32×10^7) | **10^(3.74×10^8)** | 10^(9.17×10^8) | 10^(1.05×10^9) |
+| 2.4 | Pass | 8 | 24,771 | 2,341,145,379 | 7.88×10^8 | 10^(2.25×10^13) (2.400) | 10^(2.32×10^14) | **10^(1.77×10^22)** | 10^(4.25×10^22) | 10^(4.97×10^22) |
+| 2.4 | searched | 16 | 3,207 | 3,043 | 984 | 10^1,991,526 (2.375) | 10^(4.90×10^7) | **10^(1.96×10^9)** | 10^(4.70×10^9) | 10^(5.50×10^9) |
 
-The line for Pass's rules jumps around because a lower target sometimes allows a larger c, and Pass's rules then pick a d and k just past the feasibility threshold. Right at that threshold the per-power margin in Bini's conversion is close to zero, so h becomes huge. The search avoids this by moving well past the threshold: it picks k so the mod-ε identity is already clearly below the target (2.71 instead of 2.807) and only then removes ε.
+The "Pass" line jumps around because the smallest admissible c changes with the target. When that c's limit exponent sits just under the target (c = 3 has limit 2.69, so a target of 2.7 is barely above it), condition (10) forces a huge d and then a huge k. The search escapes this by taking a larger c (6 at a target of 2.7) and moving k well past feasibility. That puts the mod-ε identity clearly below the target (2.62 against 2.7) before ε is removed.
 
 ## Quickstart
 
 ```sh
-cargo run --release --bin verify     # 451 exact checks, one line per lemma (~6 min; --quick skips the 2x2 run)
+cargo run --release --bin verify     # 451 exact checks, one line per lemma (~6 min, several GB of memory; --quick skips the 2x2 run)
 cargo run --release --bin cost       # faithful + searched cost for target exponent log2 7
-TAUS=strassen,2.6,2.4 CMAX=60 DMAX=2500 cargo run --release --bin cost   # more targets, wider search
+TAUS=strassen,2.6 CMAX=60 DMAX=2500 cargo run --release --bin cost   # more targets, wider search
+./bench/run.sh                       # regenerate the whole table and chart (~30 min)
 cargo test --release -- --include-ignored
 ```
 
@@ -74,7 +78,7 @@ Lemma 3.2 tensors the primal packing with its dual d times and keeps the words w
 
 Each column of the primal right encoder carries a single power of ε: ε^0 for the P_j, ε^1 for Q. Each row of its decoder does too: ε^0 for Full outputs, ε^−1 for the middle product. The dual swaps the two maps. A kept word has α primal Mid letters and β dual-of-Mid letters, and the balance condition is exactly α = β. So every entry of the amplified right encoder carries ε^(α−β) = ε^0, and every decoder entry ε^(β−α) = ε^0. The amplified packing, for example 17 targets from 9 sources at (a, b, c, t, d) = (2, 1, 3, 1, 1), contains no ε at all, and the verifier confirms it is exact (`verify` line "finding: 3.2 is exact").
 
-This matters for the cost. Without it, the ε-degree per round in the cost model would carry an extra factor of about (2d)² in each round. With it, the only ε left in the algorithm comes from the interpolation nodes i + εj of Lemma 3.4.
+The effect on cost is small. Without exactness, every round's ε-degree factor would grow from about 9w² to about (6d+3)²w². At the searched optimum that adds 17 bits per round to about 2,300, which makes the final identity about 0.8% larger in digits. The finding is about the structure of the construction: the formal parameter in Pass's chain is only needed for Lemma 3.4's interpolation.
 
 ## How the cost is computed
 
@@ -84,14 +88,15 @@ Every quantity follows a formula in Section 4 of the paper. `src/cost.rs` cites 
 - After k rounds, the mod-ε identity has side v_k = w²Λ^k and uses r = E_k = 64^k w^9 (2L_k−1)^{6d} scalar multiplications (proof of Thm 4.3). The 64 counts padded sources, as in the paper.
 - **ε-degree.** Every map's ε-exponent range is tracked: tensoring adds ranges, role exchange permutes them, and composition first substitutes ε → ε^N into the inner packing, with N = pL + pR + pD + 1 (proof of Lemma 2.9), then adds. One round multiplies the negative range by about 9w², and k rounds are chained, so d_ε ≈ (9w²)^k. Each rule is checked against ranges measured on materialized packings. At sizes too large to materialize, the closed forms are upper bounds on the same rules.
 - **Bini** (Lemma 2.4). The exact identity has side V = v^h and uses R = (h·d_ε + 1)·r^h multiplications, with h the smallest power making log_V R < target.
-- **"Pass's rules"** takes the smallest value the proof allows at each step: the smallest c with threshold below the target, the smallest d satisfying (10), the smallest k with E_k < v_k^τ, and the smallest h. **"Searched"** applies the same lemmas over c ≤ 60, d ≤ 2500, and k from the first feasible value k_0 to 64·k_0 (1,500 log-spaced samples plus local refinement), with the smallest feasible h at each point. It minimizes R. This is a grid search, not a proof of optimality.
+- **"Pass"** uses the smallest c whose threshold is below the target and the smallest d satisfying (10). **"Searched"** applies the same lemmas over c ≤ 60 and d ≤ 2500. Both pick k from k_0 (the first feasible k) to 64·k_0, using 1,500 log-spaced samples plus local refinement, take the smallest feasible h at each k, and minimize R. This is a grid search, not a proof of optimality. Spot checks up to 80·k_0 and across d found the optimum in the interior.
+- **Why not the smallest k.** At the very first feasible k, the mod-ε exponent sits within about 10^-15 (relative) of the target. The per-power margin in Bini's conversion is then below f64 resolution, so h cannot be computed reliably. Every reported identity is below its target by at least 64 bits of margin plus 10^-12 relative, which is far above rounding error.
 
-**Crossover bound.** Any use of the identity, even one level with padding, costs at least R multiplications. Strassen with padding costs at most 7^⌈log2 n⌉ ≤ 7·n^(log2 7). So the identity cannot win before n > (R/7)^(1/log2 7). This counts multiplications only and treats additions as free, so the true crossover is later. It is a statement about this identity, not about every algorithm with exponent 9/4.
+**Comparing with Strassen.** The exact identity multiplies V×V matrices with R multiplications, so its recursion handles sides V, V², V³, … with R, R², R³, … products. Strassen at side V uses 7^⌈log2 V⌉ ≥ V^(log2 7) > R, which is what "exponent below 2.807" buys at the identity's own size. Below V, the identity can only be used by padding the input up to V. A careful implementation could then skip products that vanish on the padding, so no claim is made about smaller sides. Additions and the linear maps are not counted anywhere. The statement is about the identities in the table, not about every algorithm with exponent 9/4.
 
 ## What this verifies and what it does not
 
 - **Verified:** finite instances of every lemma, built exactly as the proofs describe and checked exactly, plus the full chain end to end on 2×2 integer matrices. Also, that the cost model's ε bookkeeping matches the materialized constructions.
-- **Not verified:** the proof in general. The checks cover all a, b ≤ 3, but they say nothing about all a, b, t, about the counting in Claim 3.3 beyond the instances run, or about the limit argument in Thm 4.3. Pass's paper reports a Lean formalization of its rational identities (about 3,600 lines, generated by Aristotle). That is the stronger check of correctness, and this repo does not replace it. What this repo adds is concrete costs and a construction you can run.
+- **Not verified:** the proof in general. The checks cover all a, b ≤ 3, but they say nothing about all a, b, t, about the counting in Claim 3.3 beyond the instances run, or about the limit argument in Thm 4.3. Pass's paper reports a Lean formalization of its rational identities (about 3,600 lines, generated by Aristotle, which the paper says it has not independently verified). That covers the general statements, which this repo does not try to do. What this repo adds is concrete costs and a construction you can run.
 - **The end-to-end run uses minimal retention.** The chain run keeps w = u = 1 (Observation 2.5 allows retaining fewer targets), so Λ = 1 and nothing is saved. It shows that primal → amplification → SL→PP feed the round correctly as separate pieces, and that the round, composition, Lemma 2.3 evaluation and Bini compose into a correct matrix multiplication. The source count matches the formula E_k = 64·3^6·x³. The smallest instance with real retention (c = 2, d = 1, w = 8, u = 4) needs about 10^14 scalar multiplications, so it is computed rather than run. No instance with an actual saving can ever be run.
 
 ## Design decisions
@@ -110,7 +115,7 @@ Every quantity follows a formula in Section 4 of the paper. `src/cost.rs` cites 
 ## References
 
 - R. Pass, *Matrix Multiplication from Polynomial Packings: A Constructive Proof of ω ≤ 9/4*, arXiv:2610.28627 (Oct 2026).
-- OpenAI, *The matrix multiplication exponent is nine fourths* (preprint, Nov 24, 2026), github.com/openai/math, and the October upper-bound preprints. HN discussion, Nov 25, 2026.
+- OpenAI, *The matrix multiplication exponent is nine fourths* (preprint, Nov 24, 2026, github.com/openai/math), and the October upper-bound preprints.
 - Doğan, Lysikov, Sakabe, Walter, *Tensor value and the 9/4 bound for matrix multiplication*, arXiv:2611.09716; *Semidirect sums of tensors and the matrix multiplication exponent*, arXiv:2611.04175.
 - D. Bini, *Relations between exact and approximate bilinear algorithms. Applications*, Calcolo 17 (1980).
 - P. Bürgisser, M. Clausen, A. Shokrollahi, *Algebraic Complexity Theory* (1997), Ch. 13–15.

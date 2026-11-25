@@ -301,7 +301,8 @@ pub fn log2_two_lk_minus_one(n: u64, k: u64) -> f64 {
         // For L > 2^100, L' = L + ⌈(3L−1)/(n−1)⌉ ≤ ρL + 1 ≤ ρL(1 + 2^-99), ρ = 1 + 3/(n−1):
         // an upper bound in log space.
         let rho = 1.0 + 3.0 / (n - 1) as f64;
-        let step = rho.log2() + 1e-29;
+        // the +1 contributes < 2^-99 relative per step, far below f64 resolution
+    let step = rho.log2();
         *log_l_end + (k - (tab.len() - 1)) as f64 * step + 1.0
     })
 }
@@ -430,17 +431,20 @@ pub fn condition_10(c: u64, d: u64, tau: f64) -> bool {
     6.0 + 6.0 * d as f64 * rho.log2() < tau * log2_lambda
 }
 
-/// The paper's recipe, taking the smallest choice at every step:
-/// smallest c with threshold(c) < tau, smallest d satisfying (10), smallest
-/// k with E_k < v_k^tau, smallest h with R < V^tau.
+/// Pass's choice of (c, d): the smallest c whose threshold (Corollary 4.4) is
+/// below tau and the smallest d satisfying condition (10). The proof then
+/// says "a sufficiently large computable k" and "some finite h"; we take the k
+/// in [k0, 64 k0] (k0 = first feasible) and the h that minimise R, exactly as
+/// the search does for every other (c, d).
+///
+/// (Taking the very first feasible k instead puts the mod-ε exponent within
+/// ~1e-15 relative of tau, where the Bini margin is below f64 resolution and
+/// h is not computable reliably, so we do not report that choice.)
 pub fn faithful(tau: f64) -> Option<(Params, Cost)> {
     let c = (3..10_000).find(|&c| threshold(c) < tau)?;
     let d = (1..5_000_000).find(|&d| condition_10(c, d, tau))?;
-    let k = first_feasible_k(c, d, tau)?;
-    let (_, _, _, lv, lr, ld) = mod_eps_cost(c, d, k, None)?;
-    let h = min_bini_h(lv, lr, ld, tau)?;
-    let p = Params { c, d, k, h, log2_w: None };
-    Some((p, cost(p)?))
+    let b = best_k(tau, c, d, None)?;
+    Some((b.params, b.cost))
 }
 
 #[cfg(test)]
@@ -550,7 +554,7 @@ pub fn search(tau: f64, c_max: u64, d_max: u64) -> Option<Best> {
                     let mut best: Option<Best> = None;
                     for c in mine {
                         let t0 = std::time::Instant::now();
-                        let r = search_c(tau, c, d_max, best.map(|b| b.cost.log2_rr));
+                        let r = search_c(tau, c, d_max);
                         if std::env::var("SEARCH_TRACE").is_ok() {
                             eprintln!("c={c} {:.2}s", t0.elapsed().as_secs_f64());
                         }
@@ -569,57 +573,61 @@ pub fn search(tau: f64, c_max: u64, d_max: u64) -> Option<Best> {
     results.into_iter().flatten().min_by(|a, b| a.cost.log2_rr.partial_cmp(&b.cost.log2_rr).unwrap())
 }
 
-/// [`search`] for one value of c; `bound` is a known achievable log2 R used for pruning.
-pub fn search_c(tau: f64, c: u64, d_max: u64, bound: Option<f64>) -> Option<Best> {
+/// [`search`] for one value of c, over d ∈ [1, d_max].
+pub fn search_c(tau: f64, c: u64, d_max: u64) -> Option<Best> {
     let mut best: Option<Best> = None;
-    let _ = bound;
-    {
-        let rho = 1.0 + 3.0 / (c - 1) as f64;
-        for d in 1..=d_max {
-            let (_, lw, lq) = log2_u_w_q(c, d);
-            if !(lq >= 0.0) {
-                continue;
+    for d in 1..=d_max {
+        if let Some(b) = best_k(tau, c, d, best.map(|b| b.cost.log2_rr)) {
+            if best.map(|x| b.cost.log2_rr < x.cost.log2_rr).unwrap_or(true) {
+                best = Some(b);
             }
-            if tau * 2.0 * lq <= 6.0 + 6.0 * d as f64 * rho.log2() {
-                continue; // per-round margin not positive: no k is feasible
+        }
+    }
+    best
+}
+
+/// Best (k, h) for fixed (c, d): k ∈ [k0, 64 k0] (1500 log-spaced samples,
+/// then ≤ 2000 points around the best sample, unit steps when k < ~10^6), the
+/// smallest feasible h at each k, minimising log2 R. `bound` is a log2 R
+/// already achieved elsewhere: if R ≥ E_k ≥ w^9 must exceed it, skip.
+pub fn best_k(tau: f64, c: u64, d: u64, bound: Option<f64>) -> Option<Best> {
+    let rho = 1.0 + 3.0 / (c - 1) as f64;
+    let (_, lw, lq) = log2_u_w_q(c, d);
+    if !(lq >= 0.0) {
+        return None;
+    }
+    if tau * 2.0 * lq <= 6.0 + 6.0 * d as f64 * rho.log2() {
+        return None; // per-round margin not positive: no k is feasible
+    }
+    if let Some(bd) = bound {
+        if 9.0 * lw > bd {
+            return None;
+        }
+    }
+    let k0 = first_feasible_k(c, d, tau)?;
+    let mut best: Option<Best> = None;
+    let try_k = |k: u64, best: &mut Option<Best>| {
+        if let Some((p, cst)) = exact_at(c, d, k, tau) {
+            if best.map(|b| cst.log2_rr < b.cost.log2_rr).unwrap_or(true) {
+                *best = Some(Best { params: p, cost: cst });
             }
-            if let Some(b) = best {
-                if 9.0 * lw > b.cost.log2_rr {
-                    continue; // R ≥ E_k ≥ w^9 already exceeds the best
-                }
-            }
-            let Some(k0) = first_feasible_k(c, d, tau) else { continue };
-            let mut local: Option<(u64, f64)> = None;
-            let try_k = |k: u64, local: &mut Option<(u64, f64)>, best: &mut Option<Best>| {
-                if let Some((p, cst)) = exact_at(c, d, k, tau) {
-                    if local.map(|l| cst.log2_rr < l.1).unwrap_or(true) {
-                        *local = Some((k, cst.log2_rr));
-                    }
-                    if best.map(|b| cst.log2_rr < b.cost.log2_rr).unwrap_or(true) {
-                        *best = Some(Best { params: p, cost: cst });
-                    }
-                }
-            };
-            let samples = 1500u64;
-            let mut prev = 0;
-            let mut ks = vec![];
-            for i in 0..=samples {
-                let k = (k0 as f64 * 64f64.powf(i as f64 / samples as f64)).round() as u64;
-                if k != prev {
-                    ks.push(k);
-                    prev = k;
-                }
-            }
-            for &k in &ks {
-                try_k(k, &mut local, &mut best);
-            }
-            if let Some((kb, _)) = local {
-                let span = (kb as f64 * (64f64.powf(1.0 / samples as f64) - 1.0)).ceil() as u64 + 1;
-                let step = (span / 1000).max(1) as usize;
-                for k in (kb.saturating_sub(span).max(k0)..=kb + span).step_by(step) {
-                    try_k(k, &mut local, &mut best);
-                }
-            }
+        }
+    };
+    let samples = 1500u64;
+    let mut prev = 0;
+    for i in 0..=samples {
+        let k = (k0 as f64 * 64f64.powf(i as f64 / samples as f64)).round() as u64;
+        if k != prev {
+            try_k(k, &mut best);
+            prev = k;
+        }
+    }
+    if let Some(b) = best {
+        let kb = b.params.k;
+        let span = (kb as f64 * (64f64.powf(1.0 / samples as f64) - 1.0)).ceil() as u64 + 1;
+        let step = (span / 1000).max(1) as usize;
+        for k in (kb.saturating_sub(span).max(k0)..=kb + span).step_by(step) {
+            try_k(k, &mut best);
         }
     }
     best
@@ -643,6 +651,8 @@ mod search_tests {
         let tau = 7f64.log2();
         let (fp, fc) = faithful(tau).unwrap();
         assert_eq!((fp.c, fp.d), (3, 133));
+        // the reported identity is below tau by a margin far above f64 noise
+        assert!(tau * fc.log2_vv - fc.log2_rr > 64.0);
         assert!(fc.exponent_exact() < tau);
         let b = search(tau, 5, 140).unwrap();
         assert!(b.cost.exponent_exact() < tau);

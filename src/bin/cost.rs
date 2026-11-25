@@ -29,10 +29,13 @@ fn main() {
         Err(_) => vec![7f64.log2()],
     };
     for tau in taus {
-        if let Some((p, c)) = faithful(tau) {
-            row("faithful", tau, p, c, json);
+        let mode = std::env::var("MODE").unwrap_or_default();
+        if mode != "search" {
+            if let Some((p, c)) = faithful(tau) {
+                row("faithful", tau, p, c, json);
+            }
         }
-        if std::env::var("MODE").map(|m| m == "faithful").unwrap_or(false) {
+        if mode == "faithful" {
             continue;
         }
         if let Some(b) = search(tau, cm, dm) {

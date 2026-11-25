@@ -14,12 +14,12 @@ def p10(x):
 def hfmt(h):
     return f"{int(h):,}" if h < 1e6 else f"{h / 10**int(math.log10(h)):.2f}×10^{int(math.log10(h))}"
 
-print("| target exponent | parameters | c | d | k | h | mod-ε side v (exponent) | ε-degree | exact side V | cannot beat Strassen below |")
-print("|---|---|---|---|---|---|---|---|---|---|")
+print("| target exponent | parameters | c | d | k | h | mod-ε side v (exponent) | ε-degree | exact side V | multiplications R | Strassen at side V |")
+print("|---|---|---|---|---|---|---|---|---|---|---|")
 for tau in sorted({r["tau"] for r in rows}, reverse=True):
     for kind in ("faithful", "searched"):
         for r in rows:
             if r["tau"] == tau and r["kind"] == kind:
                 t = "log2 7 = 2.807" if abs(tau - math.log2(7)) < 1e-4 else f"{tau:g}"
-                floor = p10(r["log10_strassen_floor"])
-                print(f"| {t} | {'Pass' if kind == 'faithful' else 'searched'} | {r['c']} | {r['d']:,} | {r['k']:,} | {hfmt(r['h'])} | {p10(r['log10_v'])} ({r['exp_mod_eps']:.3f}) | {p10(r['log10_deg'])} | **{p10(r['log10_V'])}** | {floor} |")
+                strassen = math.ceil(r["log10_V"] / math.log10(2)) * math.log10(7)
+                print(f"| {t} | {'Pass' if kind == 'faithful' else 'searched'} | {r['c']} | {r['d']:,} | {r['k']:,} | {hfmt(r['h'])} | {p10(r['log10_v'])} ({r['exp_mod_eps']:.3f}) | {p10(r['log10_deg'])} | **{p10(r['log10_V'])}** | {p10(r['log10_R'])} | {p10(strassen)} |")

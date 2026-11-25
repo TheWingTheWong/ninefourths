@@ -6,7 +6,7 @@ import json, math, sys
 rows = [json.loads(l) for l in open(sys.argv[1])]
 dst = sys.argv[2]
 series = [
-    ("Exact identity, Pass's parameter rules", "#2a78d6", lambda r: r["kind"] == "faithful", "log10_V"),
+    ("Exact identity, Pass's (c, d)", "#2a78d6", lambda r: r["kind"] == "faithful", "log10_V"),
     ("Exact identity, searched parameters", "#eb6834", lambda r: r["kind"] == "searched", "log10_V"),
     ("Before removing eps (mod-eps), searched", "#1baf7a", lambda r: r["kind"] == "searched", "log10_v"),
 ]
@@ -22,7 +22,7 @@ Y = lambda y: mt + (ymax - y) / (ymax - ymin) * ph
 o = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">',
      f'<rect width="100%" height="100%" fill="#fcfcfb"/>',
      f'<text x="{ml}" y="26" font-size="17" font-weight="600" fill="#1f1f1e">How big is the matrix-multiplication identity in Pass\'s ω ≤ 9/4 proof?</text>',
-     f'<text x="{ml}" y="45" font-size="12.5" fill="#5f5e5a">Side of the smallest identity whose exponent is below the target, as a number of decimal digits (log scale)</text>']
+     f'<text x="{ml}" y="45" font-size="12.5" fill="#5f5e5a">Side of the best identity found whose exponent is below the target, as a number of decimal digits (log scale)</text>']
 step = max(1, math.ceil((ymax - ymin) / 8))
 ymin -= ymin % step
 for e in range(ymin, ymax + 1, step):
