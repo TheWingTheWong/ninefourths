@@ -108,14 +108,28 @@ pub fn primal_profile() -> Profile {
     Profile { el: Range::ZERO, er: Range::new(0.0, 1.0), d: Range::new(-1.0, 0.0) }
 }
 
-/// Lemma 3.2: (primal ⊗ dual)^{⊗d}.
-pub fn amplified_profile(d: u32) -> Profile {
+/// Lemma 3.2 before target selection: (primal ⊗ dual)^{⊗d}.
+pub fn amplified_profile_all(d: u32) -> Profile {
     let pair = primal_profile().tensor(primal_profile().ex23());
     let mut p = Profile::EXACT;
     for _ in 0..d {
         p = p.tensor(pair);
     }
     p
+}
+
+/// Lemma 3.2 after retaining the balanced targets: **exact**.
+///
+/// Every column of the primal right encoder has a single ε exponent (0 for
+/// the P_j, +1 for Q) and every row of its decoder too (0 for Full rows, −1
+/// for the Mid row); the dual swaps the two maps. A retained word has α
+/// primal Mid letters and β dual-of-Mid letters with α = β (that is the
+/// balance condition), so each of its right-encoder entries carries
+/// ε^{α−β} = ε^0 and each decoder entry ε^{β−α} = ε^0. The formal parameter
+/// cancels identically; `tests/profiles.rs` confirms it on materialized
+/// packings. (The paper only states that validity modulo ε is preserved.)
+pub fn amplified_profile(_d: u32) -> Profile {
+    Profile::EXACT
 }
 
 /// Lemma 3.4: parameter η = ε^w, right inputs B'_i(k) interpolated through
@@ -290,22 +304,21 @@ pub fn mod_eps_cost(c: u64, d: u64, k: u64, log2_w: Option<f64>) -> Option<(f64,
         let round = round_profile(slpp_profile(amplified_profile(d as u32), w));
         chain_log2_degree(round, k)
     } else {
-        chain_log2_degree_logspace(d as f64, log2_w, k)
+        chain_log2_degree_logspace(log2_w, k)
     };
     Some((log2_u, log2_w, log2_lambda, log2_v, log2_r, log2_deg))
 }
 
 /// Log-space version of the ε bookkeeping for huge w, using the closed forms
-/// (checked against the interval arithmetic for small w in tests):
-///   negsum(G) = (N+1)(6dw + 3w − 3),  hisum(G) = 3(N+1)(2dw + 2w − 2),
-///   N = 6dw + 3w − 2.
-pub fn chain_log2_degree_logspace(d: f64, log2_w: f64, k: u64) -> f64 {
-    // all terms dominated by w; use log2(x*w + y) ≈ log2 w + log2 x for w ≥ 2^900 (exact to 1e-250).
-    let log_n1 = log2_w + (6.0 * d + 3.0).log2(); // N + 1
-    let log_neg = log_n1 + log2_w + (6.0 * d + 3.0).log2();
-    let log_hi = (3.0f64).log2() + log_n1 + log2_w + (2.0 * d + 2.0).log2();
-    // s_k <= 2 (negsum+1)^(k-1)
-    let log_s = if k <= 1 { 0.0 } else { 1.0 + (k - 1) as f64 * log_neg };
+/// (checked against the interval arithmetic in tests): with the exact
+/// amplified packing, one round has profile G = (N+1)·t where
+/// t = pp ⊗ pp^{12} ⊗ pp^{13}, N = 3w − 2, so
+///   negsum(G) = 3(3w − 1)(w − 1) ≤ 9w²,   hisum(G) = 6(3w − 1)(w − 1) ≤ 18w².
+pub fn chain_log2_degree_logspace(log2_w: f64, k: u64) -> f64 {
+    let log_neg1 = 9f64.log2() + 2.0 * log2_w; // ≥ log2(negsum + 1)
+    let log_hi = 18f64.log2() + 2.0 * log2_w;
+    // s_k ≤ 2 (negsum+1)^(k−1)
+    let log_s = if k <= 1 { 0.0 } else { 1.0 + (k - 1) as f64 * log_neg1 };
     log_s + log_hi
 }
 
@@ -443,10 +456,12 @@ mod tests {
         for d in 1..5u32 {
             for w in [8.0f64, 100.0, 12345.0] {
                 let round = round_profile(slpp_profile(amplified_profile(d), w));
-                let dd = d as f64;
-                let n = 6.0 * dd * w + 3.0 * w - 2.0;
-                assert_eq!(round.neg_sum(), (n + 1.0) * (6.0 * dd * w + 3.0 * w - 3.0));
-                assert_eq!(round.hi_sum(), 3.0 * (n + 1.0) * (2.0 * dd * w + 2.0 * w - 2.0));
+                assert_eq!(round.neg_sum(), 3.0 * (3.0 * w - 1.0) * (w - 1.0));
+                assert_eq!(round.hi_sum(), 6.0 * (3.0 * w - 1.0) * (w - 1.0));
+                assert!((round.neg_sum() + 1.0).log2() <= 9f64.log2() + 2.0 * w.log2());
+                for k in 1..6 {
+                    assert!(chain_log2_degree(round, k) <= chain_log2_degree_logspace(w.log2(), k) + 1e-9);
+                }
             }
         }
     }
@@ -499,11 +514,35 @@ pub fn first_feasible_k(c: u64, d: u64, tau: f64) -> Option<u64> {
 /// h at each point. Objective: minimise log2 R of the exact identity with
 /// exponent < tau. Retains the full w of (8).
 pub fn search(tau: f64, c_max: u64, d_max: u64) -> Option<Best> {
+    let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4).min(6);
+    let cs: Vec<u64> = (3..=c_max).filter(|&c| threshold(c) < tau).collect();
+    let results: Vec<Option<Best>> = std::thread::scope(|sc| {
+        let hs: Vec<_> = (0..threads)
+            .map(|t| {
+                let mine: Vec<u64> = cs.iter().copied().skip(t).step_by(threads).collect();
+                sc.spawn(move || {
+                    let mut best: Option<Best> = None;
+                    for c in mine {
+                        if let Some(b) = search_c(tau, c, d_max, best.map(|b| b.cost.log2_rr)) {
+                            if best.map(|x| b.cost.log2_rr < x.cost.log2_rr).unwrap_or(true) {
+                                best = Some(b);
+                            }
+                        }
+                    }
+                    best
+                })
+            })
+            .collect();
+        hs.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    results.into_iter().flatten().min_by(|a, b| a.cost.log2_rr.partial_cmp(&b.cost.log2_rr).unwrap())
+}
+
+/// [`search`] for one value of c; `bound` is a known achievable log2 R used for pruning.
+pub fn search_c(tau: f64, c: u64, d_max: u64, bound: Option<f64>) -> Option<Best> {
     let mut best: Option<Best> = None;
-    for c in 3..=c_max {
-        if threshold(c) >= tau {
-            continue;
-        }
+    let _ = bound;
+    {
         let rho = 1.0 + 3.0 / (c - 1) as f64;
         for d in 1..=d_max {
             let (_, lw, lq) = log2_u_w_q(c, d);

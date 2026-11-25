@@ -196,3 +196,52 @@ fn round_lemma_with_minimal_inputs() {
         r.verify(&mut rng, 1).unwrap();
     }
 }
+
+#[test]
+fn minimal_chain_multiplies_matrices() {
+    use ninefourths::field as f;
+    use ninefourths::laurent::Laurent;
+    let mut rng = Rng(31);
+    // c = 3: L_0 = 1, L_1 = 2; one round, d = 1, side x = 2.
+    let x = 2;
+    let pk = minimal_chain(3, 1, 1, x, &|a, b, b2, d| minimal_round_input(a, b, b2, d));
+    assert!(pk.is_exact());
+    // 64 sources Q_{2,2}[x], each evaluated with eff = (2·2−1)^{6d} x³ products
+    assert_eq!(pk.sources.len(), 64 * 3usize.pow(6) * x * x * x);
+    assert_eq!(pk.targets[0], q_shape(1, 1, 1, x, x, x));
+    pk.verify(&mut rng, 1).unwrap();
+    // run on integer matrices against schoolbook
+    let a: Vec<i64> = (0..x * x).map(|i| i as i64 * 3 - 5).collect();
+    let b: Vec<i64> = (0..x * x).map(|i| 7 - i as i64 * 2).collect();
+    let out = pk.run(&a.iter().map(|&v| Laurent::int(v)).collect::<Vec<_>>(), &b.iter().map(|&v| Laurent::int(v)).collect::<Vec<_>>());
+    for i in 0..x {
+        for j in 0..x {
+            let want: i64 = (0..x).map(|t| a[i * x + t] * b[t * x + j]).sum();
+            assert_eq!(f::to_i64(out[i * x + j].coeff(0)), want);
+        }
+    }
+}
+
+#[test]
+fn minimal_chain_mod_eps_then_bini() {
+    let mut rng = Rng(37);
+    let input = |a: usize, b: usize, b2: usize, d: usize| {
+        use ninefourths::laurent::Laurent;
+        let mut pk = minimal_round_input(a, b, b2, d);
+        pk.er = pk.er.scale(&Laurent::mono(1, -1));
+        pk.d = pk.d.scale(&Laurent::mono(1, 1));
+        for i in 0..pk.d.nrows {
+            pk.d.add_entry(i, (i * 7) % pk.d.ncols, &Laurent::mono(5, 2));
+        }
+        pk
+    };
+    let pk = minimal_chain(3, 1, 1, 1, &input);
+    assert!(!pk.is_exact());
+    let v = pk.verify(&mut rng, 1).unwrap();
+    let bound = degree_bound(&pk);
+    assert!(v.out_degree as usize <= bound);
+    let ex = bini(&pk, bound);
+    assert!(ex.is_exact());
+    assert_eq!(ex.sources.len(), (bound + 1) * pk.sources.len());
+    ex.verify(&mut rng, 1).unwrap();
+}

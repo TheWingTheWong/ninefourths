@@ -124,13 +124,33 @@ pub fn balanced(s: &Shape, d: usize) -> bool {
 /// Lemma 3.2 (same-left amplification): tensor the SL-PP with its dual, take
 /// d copies, and retain the targets with exactly d Full and d Mid factors
 /// (Claim 3.3 guarantees at least m^{2d}/(d+1) of them).
+///
+/// Types follow the paper's labels, not the shapes: in the primal list the
+/// last target is Mid and the rest are Full; the dual swaps every type. (When
+/// a + b − 1 = 1 the shapes coincide but the labels still matter.)
 pub fn amplify(pk: &Packing, d: usize) -> Packing {
+    let m = pk.targets.len();
+    let is_mid_primal = |i: usize| i == m - 1;
     let pair = pk.tensor(&pk.ex23());
     let mut acc = pair.clone();
     for _ in 1..d {
         acc = acc.tensor(&pair);
     }
-    let keep: Vec<usize> = (0..acc.targets.len()).filter(|&i| balanced(&acc.targets[i], d)).collect();
+    // target index of acc = base-(m²) digits (pair index = i·m + k, i primal, k dual)
+    let keep: Vec<usize> = (0..acc.targets.len())
+        .filter(|&idx| {
+            let mut x = idx;
+            let mut mids = 0;
+            for _ in 0..d {
+                let pi = x % (m * m);
+                x /= m * m;
+                let (i, k) = (pi / m, pi % m);
+                mids += is_mid_primal(i) as usize; // primal letter of type Mid
+                mids += (!is_mid_primal(k)) as usize; // dual of a Full is a Mid
+            }
+            mids == d
+        })
+        .collect();
     acc.retain(&keep)
 }
 
@@ -650,4 +670,48 @@ pub fn bini(pk: &Packing, deg: usize) -> Packing {
 /// Upper bound on the ε-degree of a packing's output: EL.hi + ER.hi + D.hi.
 pub fn degree_bound(pk: &Packing) -> usize {
     pk.profile().iter().map(|&(_, hi)| hi.max(0) as usize).sum()
+}
+
+// ---------------------------------------------------------------------------
+// Theorem 4.3 chain (executable at minimal retention)
+// ---------------------------------------------------------------------------
+
+/// One round's input packings at retention w = u = 1: the exact embedding of
+/// T_{a,b} into T_{a,b'} (Observation 2.5), which satisfies Lemma 4.2's
+/// hypothesis "w copies of T_{a,b}[1,1,w] using ≤ 2w copies of T_{a,b'}[1,1,u]".
+pub fn minimal_round_input(a: usize, b: usize, b2: usize, d: usize) -> Packing {
+    embedding(&t_shape(a, b, d), &t_shape(a, b2, d))
+}
+
+/// L_{j+1} = L_j + ⌈(3L_j − 1)/(n − 1)⌉ (proof of Theorem 4.3).
+pub fn next_length(l: usize, n: usize) -> usize {
+    l + (3 * l - 1).div_ceil(n - 1)
+}
+
+/// The chain of Theorem 4.3 with k rounds at retention w = u = 1 (so Λ = 1,
+/// v_k = 1, and x is the matrix side), followed by Lemma 2.3 evaluation of
+/// every source: an exact bilinear algorithm for x×x matrix multiplication.
+/// `perturb` uses ε-perturbed inputs instead, giving a packing modulo ε.
+pub fn minimal_chain(c: usize, d: usize, k: usize, x: usize, input: &dyn Fn(usize, usize, usize, usize) -> Packing) -> Packing {
+    let mut ls = vec![1usize];
+    for _ in 0..k {
+        let l = *ls.last().unwrap();
+        ls.push(next_length(l, c));
+    }
+    let mut chain: Option<Packing> = None;
+    for j in 0..k {
+        let (l, l2) = (ls[j], ls[j + 1]);
+        let r = round(&input(l, l, l2, d), &input(l2, l, l2, d), RoundParams { l, l2, d, w: 1, u: 1, x });
+        chain = Some(match chain {
+            None => r,
+            Some(ch) => {
+                let n = ch.sources.len() / r.targets.len();
+                ch.compose(&r.repeat(n))
+            }
+        });
+    }
+    let ch = chain.unwrap();
+    let ev = evaluate(&ch.sources[0]);
+    let n = ch.sources.len();
+    ch.compose(&ev.repeat(n))
 }

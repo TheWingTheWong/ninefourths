@@ -131,17 +131,17 @@ impl Sparse {
             rows: self.rows.iter().map(|r| r.iter().map(|(j, x)| (*j, x.subst(n))).collect()).collect(),
         }
     }
-    /// (min, max) ε exponent over all entries; (0, 0) for an ε-free map.
+    /// (min, max) ε exponent over all entries; (0, 0) for a map with no entries.
     pub fn eps_range(&self) -> (i64, i64) {
-        let mut lo = 0;
-        let mut hi = 0;
+        let mut lo = i64::MAX;
+        let mut hi = i64::MIN;
         for row in &self.rows {
             for (_, x) in row {
                 lo = lo.min(x.valuation().unwrap());
                 hi = hi.max(x.degree().unwrap());
             }
         }
-        (lo, hi)
+        if lo == i64::MAX { (0, 0) } else { (lo, hi) }
     }
 }
 
