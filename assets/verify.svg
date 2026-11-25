@@ -1,29 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1147" height="464" viewBox="0 0 1147 464">
+<svg xmlns="http://www.w3.org/2000/svg" width="1217" height="464" viewBox="0 0 1217 464">
 <rect width="100%" height="100%" rx="8" fill="#1a1a19"/>
 <style>text{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;white-space:pre}</style>
 <circle cx="18" cy="17" r="5" fill="#d95926"/><circle cx="34" cy="17" r="5" fill="#c98500"/><circle cx="50" cy="17" r="5" fill="#199e70"/>
 <text x="68" y="21" fill="#c3c2b7">$ cargo run --release --bin verify</text>
 <text x="16" y="48" fill="#c3c2b7">ninefourths verify: every check is exact over F_p, p = 2^61 - 1, with eps symbolic</text>
 <text x="16" y="66" fill="#c3c2b7"></text>
-<text x="16" y="84"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  shapes (2), (9)          25/25      0.04s  Full^12_{a,b} = Full_{b,a}; Mid_{a,b} = dual of Full_{a,b}</tspan></text>
-<text x="16" y="102"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Theorem 3.1 primal      304/304     0.13s  (c+2)-for-c SL-PP mod eps, all a,b&lt;=3, c&lt;=4, t&lt;=6 with ct &gt;= a+2b-1</tspan></text>
+<text x="16" y="84"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  shapes (2), (9)          25/25      0.00s  Full^12_{a,b} = Full_{b,a}; Mid_{a,b} = dual of Full_{a,b}</tspan></text>
+<text x="16" y="102"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Theorem 3.1 primal      304/304     0.06s  (c+2)-for-c SL-PP mod eps, all a,b&lt;=3, c&lt;=4, t&lt;=6 with ct &gt;= a+2b-1</tspan></text>
 <text x="16" y="120"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Theorem 3.1 negative     64/64      0.01s  every instance with ct &lt; a+2b-1 is rejected by the verifier</tspan></text>
 <text x="16" y="138"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  OpenAI Lemma 4.2         16/16      0.00s  three-for-one degeneration (c = 1, t = a+2b-1)</tspan></text>
 <text x="16" y="156"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  negative control          1/1       0.00s  one decoder coefficient changed by 1 is caught</tspan></text>
 <text x="16" y="174"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Lemma 2.8 exchanges       6/6       0.00s  (23) on SL-PPs; (12), (13), (23) on PPs</tspan></text>
 <text x="16" y="192"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Lemma 2.7 tensoring       3/3       0.00s  primal tensor dual</tspan></text>
-<text x="16" y="210"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Lemma 3.2 amplify         6/6       0.08s  d &lt;= 2; &gt;= m^2d/(d+1) targets (Claim 3.3), all ~ T_{a,b}</tspan></text>
-<text x="16" y="228"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  finding: 3.2 is exact     6/6       0.06s  the balanced amplified packing has no eps at all</tspan></text>
-<text x="16" y="246"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Lemma 3.4 SL -&gt; PP        7/7       0.91s  w targets via 2w-1 sources, incl. full retention (w = 10, 17); eps ranges match the cost model</tspan></text>
+<text x="16" y="210"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Lemma 3.2 amplify         6/6       0.07s  d &lt;= 2; &gt;= m^2d/(d+1) targets (Claim 3.3), all ~ T_{a,b}</tspan></text>
+<text x="16" y="228"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  finding: 3.2 is exact     6/6       0.05s  the balanced amplified packing has no eps at all</tspan></text>
+<text x="16" y="246"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Lemma 3.4 SL -&gt; PP        7/7       0.86s  w targets via 2w-1 sources, incl. full retention (w = 10, 17); eps ranges match the cost model</tspan></text>
 <text x="16" y="264"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Lemma 2.3 evaluation      5/5       0.01s  exact, with exactly eff(P) scalar multiplications</tspan></text>
 <text x="16" y="282"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Lemma 2.9 composition     1/1       0.00s  SL-&gt;PP (mod eps) composed with exact evaluation of every source</tspan></text>
-<text x="16" y="300"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Lemma 4.1 Q_{a,b}         5/5       0.33s  eff = (a+b-1)^6d, Q_{a,b} ~ Q_{b,a}, Q_{1,1} = matmul</tspan></text>
-<text x="16" y="318"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Lemma 4.2 round           2/2       1.27s  1 Q_{1,1} via 64 Q_{2,2}; exact and eps-perturbed inputs; eps ranges match</tspan></text>
-<text x="16" y="336"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Lemma 2.4 Bini (real)     1/1     534.10s  primal -&gt; amplify -&gt; SL-&gt;PP -&gt; evaluate sources -&gt; Bini: exact packing of 17 T_{2,1} products</tspan></text>
-<text x="16" y="354"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Lemma 2.4 Bini (chain)    1/1      15.53s  mod-eps round chain (perturbed inputs) -&gt; exact matmul identity</tspan></text>
+<text x="16" y="300"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Lemma 4.1 Q_{a,b}         5/5       0.38s  eff = (a+b-1)^6d, Q_{a,b} ~ Q_{b,a}, Q_{1,1} = matmul</tspan></text>
+<text x="16" y="318"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Lemma 4.2 round           2/2       1.01s  1 Q_{1,1} via 64 Q_{2,2}; exact and eps-perturbed inputs; eps ranges match</tspan></text>
+<text x="16" y="336"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Lemma 2.4 Bini (real)     1/1       0.26s  primal -&gt; amplify -&gt; SL-&gt;PP -&gt; evaluate sources -&gt; Bini: exact packing of 5 T_{2,1} products</tspan></text>
+<text x="16" y="354"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Lemma 2.4 Bini (chain)    1/1      15.71s  mod-eps round chain (perturbed inputs) -&gt; exact matmul identity</tspan></text>
 <text x="16" y="372" fill="#c3c2b7">      A = [762, 162, 452, -374], B = [-19, -527, 74, -205]</text>
 <text x="16" y="390" fill="#c3c2b7">      A*B via 373248 scalar multiplications (schoolbook: 8) = [-2490, -434784, -36264, -161534]</text>
-<text x="16" y="408"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Theorem 4.3 chain         1/1     583.20s  2x2 integer matrices through the whole chain (c=3, d=1, k=1, w=u=1) = schoolbook</tspan></text>
+<text x="16" y="408"><tspan fill="#3ecf8e">PASS</tspan><tspan fill="#f0efec">  Thm 4.3 round chain       1/1     284.93s  round -&gt; compose -&gt; Lemma 2.3 on minimal inputs (c=3, d=1, k=1, w=u=1): 2x2 integer matmul = schoolbook</tspan></text>
 <text x="16" y="426" fill="#c3c2b7"></text>
 <text x="16" y="444" fill="#3ecf8e">454 checks, 454 passed: ALL PASS</text>
 </svg>

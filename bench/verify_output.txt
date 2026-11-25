@@ -1,23 +1,23 @@
 ninefourths verify: every check is exact over F_p, p = 2^61 - 1, with eps symbolic
 
-PASS  shapes (2), (9)          25/25      0.04s  Full^12_{a,b} = Full_{b,a}; Mid_{a,b} = dual of Full_{a,b}
-PASS  Theorem 3.1 primal      304/304     0.13s  (c+2)-for-c SL-PP mod eps, all a,b<=3, c<=4, t<=6 with ct >= a+2b-1
+PASS  shapes (2), (9)          25/25      0.00s  Full^12_{a,b} = Full_{b,a}; Mid_{a,b} = dual of Full_{a,b}
+PASS  Theorem 3.1 primal      304/304     0.06s  (c+2)-for-c SL-PP mod eps, all a,b<=3, c<=4, t<=6 with ct >= a+2b-1
 PASS  Theorem 3.1 negative     64/64      0.01s  every instance with ct < a+2b-1 is rejected by the verifier
 PASS  OpenAI Lemma 4.2         16/16      0.00s  three-for-one degeneration (c = 1, t = a+2b-1)
 PASS  negative control          1/1       0.00s  one decoder coefficient changed by 1 is caught
 PASS  Lemma 2.8 exchanges       6/6       0.00s  (23) on SL-PPs; (12), (13), (23) on PPs
 PASS  Lemma 2.7 tensoring       3/3       0.00s  primal tensor dual
-PASS  Lemma 3.2 amplify         6/6       0.08s  d <= 2; >= m^2d/(d+1) targets (Claim 3.3), all ~ T_{a,b}
-PASS  finding: 3.2 is exact     6/6       0.06s  the balanced amplified packing has no eps at all
-PASS  Lemma 3.4 SL -> PP        7/7       0.91s  w targets via 2w-1 sources, incl. full retention (w = 10, 17); eps ranges match the cost model
+PASS  Lemma 3.2 amplify         6/6       0.07s  d <= 2; >= m^2d/(d+1) targets (Claim 3.3), all ~ T_{a,b}
+PASS  finding: 3.2 is exact     6/6       0.05s  the balanced amplified packing has no eps at all
+PASS  Lemma 3.4 SL -> PP        7/7       0.86s  w targets via 2w-1 sources, incl. full retention (w = 10, 17); eps ranges match the cost model
 PASS  Lemma 2.3 evaluation      5/5       0.01s  exact, with exactly eff(P) scalar multiplications
 PASS  Lemma 2.9 composition     1/1       0.00s  SL->PP (mod eps) composed with exact evaluation of every source
-PASS  Lemma 4.1 Q_{a,b}         5/5       0.33s  eff = (a+b-1)^6d, Q_{a,b} ~ Q_{b,a}, Q_{1,1} = matmul
-PASS  Lemma 4.2 round           2/2       1.27s  1 Q_{1,1} via 64 Q_{2,2}; exact and eps-perturbed inputs; eps ranges match
-PASS  Lemma 2.4 Bini (real)     1/1     534.10s  primal -> amplify -> SL->PP -> evaluate sources -> Bini: exact packing of 17 T_{2,1} products
-PASS  Lemma 2.4 Bini (chain)    1/1      15.53s  mod-eps round chain (perturbed inputs) -> exact matmul identity
+PASS  Lemma 4.1 Q_{a,b}         5/5       0.38s  eff = (a+b-1)^6d, Q_{a,b} ~ Q_{b,a}, Q_{1,1} = matmul
+PASS  Lemma 4.2 round           2/2       1.01s  1 Q_{1,1} via 64 Q_{2,2}; exact and eps-perturbed inputs; eps ranges match
+PASS  Lemma 2.4 Bini (real)     1/1       0.26s  primal -> amplify -> SL->PP -> evaluate sources -> Bini: exact packing of 5 T_{2,1} products
+PASS  Lemma 2.4 Bini (chain)    1/1      15.71s  mod-eps round chain (perturbed inputs) -> exact matmul identity
       A = [762, 162, 452, -374], B = [-19, -527, 74, -205]
       A*B via 373248 scalar multiplications (schoolbook: 8) = [-2490, -434784, -36264, -161534]
-PASS  Theorem 4.3 chain         1/1     583.20s  2x2 integer matrices through the whole chain (c=3, d=1, k=1, w=u=1) = schoolbook
+PASS  Thm 4.3 round chain       1/1     284.93s  round -> compose -> Lemma 2.3 on minimal inputs (c=3, d=1, k=1, w=u=1): 2x2 integer matmul = schoolbook
 
 454 checks, 454 passed: ALL PASS
