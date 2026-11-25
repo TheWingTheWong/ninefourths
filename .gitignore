@@ -1,3 +1,4 @@
 target/
 .publish.json
 *.log
+brag-output/

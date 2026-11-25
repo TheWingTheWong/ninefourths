@@ -1,5 +1,7 @@
 # ninefourths
 
+[![Launch video](assets/launch.png)](assets/launch.mp4)
+
 On November 24, 2026 OpenAI posted a preprint claiming that the matrix multiplication exponent ω is exactly 9/4. The upper bound comes from October, and the new lower bound has not yet been checked outside OpenAI. Rafael Pass then published an explicit, constructive algorithm for the upper bound ([arXiv 2610.28627](https://arxiv.org/abs/2610.28627)). This repo builds that algorithm, runs it, and works out what it costs.
 
 **The best exact identity found here whose exponent is below Strassen's 2.807 multiplies matrices whose side has 1,078,626 digits (V ≈ 10^1,078,625.5). At that size it uses 10^3,028,063 multiplications, an exponent of 2.807335 against Strassen's log2 7 = 2.807355. That is 22 orders of magnitude fewer than Strassen's 10^3,028,085, out of three million. Nothing smaller can be fed to it without padding.** That is the best point of a grid search over the free parameters of Pass's lemmas (c ≤ 60, d ≤ 2500, k up to 64× its first feasible value). The minimal c and d that the proof admits give an identity of side 10^(1.6×10^11). Almost all of the size comes from removing the formal parameter ε at the end (Bini's conversion). Before that step, the identity already has exponent 2.71 at side 10^17,977, but its ε-degree is 10^103,314, so Bini's conversion needs 60 tensor powers.
