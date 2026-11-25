@@ -10,11 +10,11 @@ fn l10(x: f64) -> f64 {
 fn row(kind: &str, tau: f64, p: Params, c: Cost, json: bool) {
     if json {
         println!(
-            "{{\"kind\":\"{kind}\",\"tau\":{tau:.6},\"c\":{},\"d\":{},\"k\":{},\"h\":{},\"log10_v\":{:.6},\"log10_r\":{:.6},\"exp_mod_eps\":{:.8},\"log10_deg\":{:.6},\"log10_V\":{:.6},\"log10_R\":{:.6},\"exp_exact\":{:.8},\"log10_strassen_floor\":{:.6}}}",
+            "{{\"kind\":\"{kind}\",\"tau\":{tau:.6},\"c\":{},\"d\":{},\"k\":{},\"h\":{:.6e},\"log10_v\":{:.6},\"log10_r\":{:.6},\"exp_mod_eps\":{:.8},\"log10_deg\":{:.6},\"log10_V\":{:.6},\"log10_R\":{:.6},\"exp_exact\":{:.8},\"log10_strassen_floor\":{:.6}}}",
             p.c, p.d, p.k, p.h, l10(c.log2_v), l10(c.log2_r), c.exponent_mod_eps(), l10(c.log2_deg), l10(c.log2_vv), l10(c.log2_rr), c.exponent_exact(), l10(c.log2_strassen_floor())
         );
     } else {
-        println!("{kind:>9} tau<{tau:.4}  c={:<3} d={:<5} k={:<6} h={:<11} mod-eps side 10^{:<11.0} exp {:.4}  eps-degree 10^{:<11.0} exact side V = 10^{:.4e}  R = 10^{:.4e}",
+        println!("{kind:>9} tau<{tau:.4}  c={:<3} d={:<5} k={:<6} h={:<11.4e} mod-eps side 10^{:<11.0} exp {:.4}  eps-degree 10^{:<11.0} exact side V = 10^{:.4e}  R = 10^{:.4e}",
             p.c, p.d, p.k, p.h, l10(c.log2_v), c.exponent_mod_eps(), l10(c.log2_deg), l10(c.log2_vv), l10(c.log2_rr));
     }
 }
@@ -31,6 +31,9 @@ fn main() {
     for tau in taus {
         if let Some((p, c)) = faithful(tau) {
             row("faithful", tau, p, c, json);
+        }
+        if std::env::var("MODE").map(|m| m == "faithful").unwrap_or(false) {
+            continue;
         }
         if let Some(b) = search(tau, cm, dm) {
             row("searched", tau, b.params, b.cost, json);

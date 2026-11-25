@@ -233,7 +233,8 @@ pub struct Params {
     /// Number of rounds (Theorem 4.3).
     pub k: u64,
     /// Bini tensor power (Lemma 2.4).
-    pub h: u64,
+    /// (f64: for Pass's rules at low targets h exceeds 2^64.)
+    pub h: f64,
     /// log2 of the retained target count w (≤ the w of (8)); None = (8) itself.
     pub log2_w: Option<f64>,
 }
@@ -353,7 +354,7 @@ pub fn chain_log2_degree_logspace(log2_w: f64, k: u64) -> f64 {
 /// Full cost including Bini's conversion with tensor power h.
 pub fn cost(p: Params) -> Option<Cost> {
     let (log2_u, log2_w, log2_lambda, log2_v, log2_r, log2_deg) = mod_eps_cost(p.c, p.d, p.k, p.log2_w)?;
-    let h = p.h as f64;
+    let h = p.h;
     // (h d_ε + 1) r^h
     let log2_hd1 = log2_add(h.log2() + log2_deg, 0.0);
     Some(Cost {
@@ -377,16 +378,22 @@ pub fn log2_add(a: f64, b: f64) -> f64 {
 /// Smallest Bini power h such that the exact identity has exponent < tau,
 /// i.e. log2(h d + 1) + h log2 r < tau h log2 v. Returns None if the mod-ε
 /// identity itself is not below tau.
-pub fn min_bini_h(log2_v: f64, log2_r: f64, log2_deg: f64, tau: f64) -> Option<u64> {
+pub fn min_bini_h(log2_v: f64, log2_r: f64, log2_deg: f64, tau: f64) -> Option<f64> {
     let gap = tau * log2_v - log2_r; // bits saved per tensor power
     if gap <= 0.0 {
         return None;
     }
     // need log2(h·2^deg + 1) < h·gap. LHS ≈ deg + log2 h.
-    let f = |h: f64| log2_add(h.log2() + log2_deg, 0.0) < h * gap;
+    // Safety slack so that f64 rounding (relative 1e-16 on values up to ~1e17
+    // bits) can never turn a reported identity into one that is not below tau:
+    // 64 bits plus 1e-12 relative.
+    let f = |h: f64| {
+        let slack = 64.0 + 1e-12 * h * (log2_r + tau * log2_v);
+        log2_add(h.log2() + log2_deg, 0.0) + slack < h * gap
+    };
     let mut lo = 1.0f64;
     if f(lo) {
-        return Some(1);
+        return Some(1.0);
     }
     let mut hi = 2.0f64;
     while !f(hi) {
@@ -397,16 +404,16 @@ pub fn min_bini_h(log2_v: f64, log2_r: f64, log2_deg: f64, tau: f64) -> Option<u
     }
     while hi - lo > 1.0 {
         let mid = ((lo + hi) / 2.0).floor();
+        if mid <= lo || mid >= hi {
+            break; // f64 resolution reached
+        }
         if f(mid) {
             hi = mid;
         } else {
             lo = mid;
         }
     }
-    if hi > u64::MAX as f64 {
-        return None;
-    }
-    Some(hi as u64)
+    Some(hi)
 }
 
 /// Asymptotic exponent threshold for a given c (Corollary 4.4):
@@ -428,18 +435,8 @@ pub fn condition_10(c: u64, d: u64, tau: f64) -> bool {
 /// k with E_k < v_k^tau, smallest h with R < V^tau.
 pub fn faithful(tau: f64) -> Option<(Params, Cost)> {
     let c = (3..10_000).find(|&c| threshold(c) < tau)?;
-    let d = (1..100_000).find(|&d| condition_10(c, d, tau))?;
-    let mut k = 1;
-    loop {
-        let (_, _, _, lv, lr, _) = mod_eps_cost(c, d, k, None)?;
-        if lr < tau * lv {
-            break;
-        }
-        k += 1;
-        if k > 10_000_000 {
-            return None;
-        }
-    }
+    let d = (1..5_000_000).find(|&d| condition_10(c, d, tau))?;
+    let k = first_feasible_k(c, d, tau)?;
     let (_, _, _, lv, lr, ld) = mod_eps_cost(c, d, k, None)?;
     let h = min_bini_h(lv, lr, ld, tau)?;
     let p = Params { c, d, k, h, log2_w: None };
@@ -521,7 +518,7 @@ pub fn first_feasible_k(c: u64, d: u64, tau: f64) -> Option<u64> {
     let mut hi = 1u64;
     while !ok(hi) {
         hi *= 2;
-        if hi > 1 << 34 {
+        if hi > 1 << 50 {
             return None;
         }
     }
@@ -543,7 +540,8 @@ pub fn first_feasible_k(c: u64, d: u64, tau: f64) -> Option<u64> {
 /// exponent < tau. Retains the full w of (8).
 pub fn search(tau: f64, c_max: u64, d_max: u64) -> Option<Best> {
     let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4).min(6);
-    let cs: Vec<u64> = (3..=c_max).filter(|&c| threshold(c) < tau).collect();
+    let c_min: u64 = std::env::var("CMIN").ok().and_then(|s| s.parse().ok()).unwrap_or(3);
+    let cs: Vec<u64> = (c_min.max(3)..=c_max).filter(|&c| threshold(c) < tau).collect();
     let results: Vec<Option<Best>> = std::thread::scope(|sc| {
         let hs: Vec<_> = (0..threads)
             .map(|t| {
@@ -625,4 +623,29 @@ pub fn search_c(tau: f64, c: u64, d_max: u64, bound: Option<f64>) -> Option<Best
         }
     }
     best
+}
+
+#[cfg(test)]
+mod search_tests {
+    use super::*;
+
+    #[test]
+    fn bini_h_is_minimal_and_terminates() {
+        // tiny gap and huge degree: must return quickly (None or a valid h)
+        let _ = min_bini_h(1e7, 1e7 * 2.8 - 1e-9, 1e7, 2.8);
+        let h = min_bini_h(100.0, 250.0, 40.0, 2.8).unwrap();
+        let ok = |h: f64| log2_add(h.log2() + 40.0, 0.0) + 64.0 + 1e-12 * h * 530.0 + h * 250.0 < 2.8 * h * 100.0;
+        assert!(ok(h) && (h == 1.0 || !ok(h - 1.0)));
+    }
+
+    #[test]
+    fn search_contains_faithful_and_is_no_worse() {
+        let tau = 7f64.log2();
+        let (fp, fc) = faithful(tau).unwrap();
+        assert_eq!((fp.c, fp.d), (3, 133));
+        assert!(fc.exponent_exact() < tau);
+        let b = search(tau, 5, 140).unwrap();
+        assert!(b.cost.exponent_exact() < tau);
+        assert!(b.cost.log2_rr <= fc.log2_rr);
+    }
 }
