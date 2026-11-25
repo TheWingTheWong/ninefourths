@@ -43,7 +43,7 @@ The "Pass" line jumps around because the smallest admissible c changes with the 
 ## Quickstart
 
 ```sh
-cargo run --release --bin verify     # 454 exact checks, one line per lemma (--quick: under a minute; the full run adds the 2x2 chain: 5–10 min and a few GB)
+cargo run --release --bin verify     # 454 exact checks (453 with --quick), one line per lemma (--quick: under a minute; the full run adds the 2x2 chain: 5–10 min and a few GB)
 cargo run --release --bin cost       # faithful + searched cost for target exponent log2 7
 TAUS=strassen,2.6 CMAX=60 DMAX=2500 cargo run --release --bin cost   # more targets, wider search
 ./bench/run.sh                       # regenerate the whole table and chart (~30 min)
