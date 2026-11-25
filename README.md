@@ -49,7 +49,7 @@ cargo run --release --bin verify     # 454 exact checks (453 with --quick), one 
 cargo run --release --bin cost       # faithful + searched cost for target exponent log2 7
 TAUS=strassen,2.6 CMAX=60 DMAX=2500 cargo run --release --bin cost   # more targets, wider search
 ./bench/run.sh                       # regenerate the whole table and chart (~30 min)
-cargo test --release -- --include-ignored
+cargo test --release -- --include-ignored   # the ignored chain tests peak near 20 GB; CI runs the rest
 ```
 
 Rust stable, no unsafe. The only dependency is `num-bigint`, used for the exact integers in the cost model.
