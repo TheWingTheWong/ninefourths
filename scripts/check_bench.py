@@ -3,13 +3,17 @@
 contains the optimum and compare with bench/cost_table.jsonl."""
 import json, os, subprocess, sys
 
-env = dict(os.environ, TAUS="strassen", CMAX="6", DMAX="250")
-out = subprocess.run(["./target/release/cost", "--json"], env=env, capture_output=True, text=True, check=True).stdout
-got = [json.loads(l) for l in out.splitlines() if l.strip()]
-want = [json.loads(l) for l in open("bench/cost_table.jsonl") if abs(json.loads(l)["tau"] - 2.807355) < 1e-5]
+def run(**kw):
+    env = dict(os.environ, **kw)
+    out = subprocess.run(["./target/release/cost", "--json"], env=env, capture_output=True, text=True, check=True).stdout
+    return [json.loads(l) for l in out.splitlines() if l.strip()]
+
+table = [json.loads(l) for l in open("bench/cost_table.jsonl")]
+# 2.807: both rows on a grid containing the optimum; 2.7: the searched row on c = 6 only
+got = run(TAUS="strassen", CMAX="6", DMAX="250") + run(TAUS="2.7", CMIN="6", CMAX="6", DMAX="400", MODE="search")
 ok = True
 for g in got:
-    w = next(x for x in want if x["kind"] == g["kind"])
+    w = next(x for x in table if x["kind"] == g["kind"] and abs(x["tau"] - g["tau"]) < 1e-5)
     for key in ("c", "d", "k"):
         if g[key] != w[key]:
             print(f"{g['kind']}: {key} {g[key]} != {w[key]}"); ok = False

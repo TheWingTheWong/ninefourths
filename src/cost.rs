@@ -1,4 +1,7 @@
-//! Exact cost accounting for Pass's construction (arXiv 2610.28627, Section 4).
+//! Cost accounting for Pass's construction (arXiv 2610.28627, Section 4).
+//! Counts are exact where they fit in big integers; beyond that every
+//! rounding is in the upward direction, so reported sizes are upper bounds
+//! for the stated parameters.
 //!
 //! Every quantity follows a formula from the paper; the comment next to each
 //! one names the equation or lemma it comes from. Quantities that overflow

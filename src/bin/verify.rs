@@ -159,7 +159,18 @@ fn main() {
             ok(&sl_to_pp(&pk.retain(&keep)), 24)
         }));
     }
-    check(&mut lines, "Lemma 3.4 SL -> PP", "w targets via 2w-1 sources; eps ranges match the cost model", cases);
+    for (a, b, c, t) in [(1, 1, 2, 1), (2, 1, 3, 1)] {
+        cases.push(Box::new(move || {
+            // every balanced target Lemma 3.2 keeps (at least the w of (8))
+            let amp = amplify(&primal(a, b, c, t, 1, 1, 1), 1);
+            let w = amp.targets.len();
+            let pp = sl_to_pp(&amp);
+            let m = pp.profile();
+            let pred = cost::slpp_profile(cost::amplified_profile(1), w as f64);
+            pp.sources.len() == 2 * w - 1 && ok(&pp, 25) && m[1] == (pred.er.lo as i64, pred.er.hi as i64) && m[2] == (pred.d.lo as i64, pred.d.hi as i64)
+        }));
+    }
+    check(&mut lines, "Lemma 3.4 SL -> PP", "w targets via 2w-1 sources, incl. full retention (w = 10, 17); eps ranges match the cost model", cases);
 
     // Lemma 2.3, 2.9
     let mut cases: Vec<Box<dyn Fn() -> bool>> = vec![];
@@ -215,11 +226,27 @@ fn main() {
     }
     check(&mut lines, "Lemma 4.2 round", "1 Q_{1,1} via 64 Q_{2,2}; exact and eps-perturbed inputs; eps ranges match", cases);
 
+    // Lemma 2.4 on the construction's own eps: Thm 3.1 -> Lemma 3.2 -> Lemma 3.4 -> Lemma 2.3 -> Bini
+    check(
+        &mut lines,
+        "Lemma 2.4 Bini (real)",
+        "primal -> amplify -> SL->PP -> evaluate sources -> Bini: exact packing of 17 T_{2,1} products",
+        vec![Box::new(|| {
+            let amp = amplify(&primal(2, 1, 3, 1, 1, 1, 1), 1);
+            let pp = sl_to_pp(&amp);
+            let ev = evaluate(&pp.sources[0]);
+            let all = pp.compose(&ev.repeat(pp.sources.len()));
+            let deg = degree_bound(&all);
+            let ex = bini(&all, deg);
+            !all.is_exact() && ex.is_exact() && ok(&all, 43) && ok(&ex, 44)
+        })],
+    );
+
     // Lemma 2.4
     check(
         &mut lines,
-        "Lemma 2.4 Bini",
-        "mod-eps chain -> exact identity via deg+1 evaluations of eps",
+        "Lemma 2.4 Bini (chain)",
+        "mod-eps round chain (perturbed inputs) -> exact matmul identity",
         vec![Box::new(|| {
             let pk = minimal_chain(3, 1, 1, 1, &perturbed);
             let deg = degree_bound(&pk);
